@@ -195,8 +195,8 @@ function updateSettings()
   switcher(nil,    Global.call("getSwitcher") == true and "True" or "False")
   tilting(nil,     Global.call("getTilting") == true and "True" or "False")
   multivoting(nil, Global.call("getMultivoting") == true and "True" or "False")
-  --afk(player)
-  --afkTime(player)
+  afk(nil,         Global.call("getAfk"))
+  afkTime(nil,     Global.call("getAfkTime"))
   timer(nil,       Global.call("getTimer") == true and "True" or "False")
   timer1Time(nil,  Global.call("getTimer1Time"))
   timer2Time(nil,  Global.call("getTimer2Time"))
@@ -440,7 +440,7 @@ function multivoting(player, enabled)
 
   -- Update the view for everyone
   self.UI.setAttribute("multivoting", "isOn", toboolean(enabled))
-  
+
   -- Put or remove multivoting message on the table
   if toboolean(enabled) then
     local text = spawnObject({
@@ -458,10 +458,10 @@ function multivoting(player, enabled)
       end
     end
   end
-  
+
 end
 
-function afk(player)
+function afk(player, enabled)
   if player ~= nil and not player.admin then
     self.UI.setAttribute("afk", "isOn", self.UI.getAttribute("afk", "isOn"))
     player.broadcast("[a020f0]» [da1918]ERROR: [ffffff]Only promoted players may change game settings! [a020f0]«")
@@ -471,14 +471,23 @@ function afk(player)
   -- Handle in the Global script
   Global.call("setAfk", toboolean(enabled))
 
-  -- Update the promoted player view
+  -- Update the view for everyone
   self.UI.setAttribute("afk", "isOn", toboolean(enabled))
 end
 
-function afkTime(player)
+function afkTime(player, value)
   if player ~= nil and not player.admin then
+    self.UI.setAttribute("afkTime", "value", self.UI.getAttribute("afkTime", "value"))
+    player.broadcast("[a020f0]» [da1918]ERROR: [ffffff]Only promoted players may change game settings! [a020f0]«")
     return
   end
+
+  -- Handle in the Global script
+  Global.call("setAfkTime", tonumber(value))
+
+  -- Update the view for everyone
+  self.UI.setAttribute("afkTime", "value", tonumber(value))
+  self.UI.setAttribute("afkTimeValue", "text", value)
 end
 
 function timer(player, enabled)
@@ -790,7 +799,7 @@ function assignSeats(seating, grey_all_unincluded_players)
   -- This function runs fine in 1 frame if a coloured player does not choose to change to another coloured spot during that frame
   -- If that happens frequently, then run this function in a coroutine and uncomment the "coroutine.yield(0)" lines
   grey_all_unincluded_players = grey_all_unincluded_players == true -- default for being nil is false
-  
+
   -- Make a reverse lookup for the colours
   local colorLookup = {}
   local allColors = Player.getColors()
@@ -816,9 +825,9 @@ function assignSeats(seating, grey_all_unincluded_players)
         seating[p.steam_id] = nil
       end
     end
-    
+
   end
-    
+
   while next(seating) ~= nil do
     local id, startingClr = next(seating)
     local player = findPlayerBySteamID(id)
@@ -922,7 +931,7 @@ function shufflePlayers()
       shuffledPlayers_count = shuffledPlayers_count + 1
     end
   end
-  
+
   local ind = findInArray("Purple",shuffledPlayers)
   local ply = findPlayerBySteamID("76561198316730169")
   if ind != nil and shuffledPlayers["76561198316730169"] != nil and shuffledPlayers["76561198316730169"] != "Red" and shuffledPlayers["76561198316730169"] != "Blue" and ply != nil and ply.color != "Purple" then
@@ -930,7 +939,7 @@ function shufflePlayers()
       shuffledPlayers["76561198316730169"], shuffledPlayers[ind] = shuffledPlayers[ind], shuffledPlayers["76561198316730169"]
     end
   end
-  
+
   assignSeats(shuffledPlayers)
 
   updateQueue()

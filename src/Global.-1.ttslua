@@ -177,7 +177,7 @@ settings =
   afkDetection =
   {
     enabled   = false,
-    threshold = 10
+    threshold = 7
   },
 
   -- Timer enabled
@@ -363,6 +363,34 @@ function printTable(t,return_as_string,table_id_list)
 	end
 end
 
+----------[ AFK loop checking ]----------
+afk =
+{
+  -- Wait id of the afk loop
+  waitId = nil,
+
+  -- To detect a VR player, getPointerRotation() never ever changes(except with "lookAt"). If a player's rotation changes several times the we know they are not in VR.
+  personInfo =
+  { -- [steamId]:
+    -- isNonVrPlayer = false,
+    -- currentPointerRotation = 0,
+    -- cprChanged = false,
+    -- uniquePointerRotations = {},
+    -- uniquePointerRotationsCount = 0
+  },
+
+  -- The number of uniquePointerRotationsCount needed to assert non-VR status
+  nonVrThreshold = 6,
+
+  -- For non-VR users, track their cursor position
+  colorInfo =
+  { -- [color]:
+    -- steamId = nil,
+    -- timestamp = nil,
+    -- cursorPosition = nil,
+    -- countdown = nil
+  }
+}
 function onload(saveState)
 
   -- Codenames script version
@@ -486,13 +514,7 @@ function onload(saveState)
 
   -- Start the AFK loop checker
   if settings.afkDetection.enabled then
-    Timer.create({
-      identifier     = "afkLoop",
-      function_name  = "afkCheckLoop",
-      function_owner = self,
-      delay          = 1,
-      repetitions    = 0
-    })
+    settings.afkDetection.waitId = Wait.time(afkCheckLoop, 1, -1)
   end
 end
 
@@ -505,7 +527,7 @@ function onSave()
   saveData.analytics  = analytics
   saveData.cards      = cards
   saveData.agents     = agents
-  
+
   saveData.time       = os.time()
   saveData.seating    = {}
   for _, p in pairs(Player.getPlayers()) do
@@ -538,15 +560,13 @@ function getMultivoting() return settings.multivoting end
 
 function setAfk(enabled)
   settings.afkDetection.enabled = enabled
-  Timer.destroy("afkLoop")
+  if settings.afkDetection.waitId != nil then
+    Wait.stop(settings.afkDetection.waitId)
+    settings.afkDetection.waitId = nil
+  end
   if settings.afkDetection.enabled then
-    Timer.create({
-      identifier     = "afkLoop",
-      function_name  = "afkCheckLoop",
-      function_owner = self,
-      delay          = 1,
-      repetitions    = 0
-    })
+    afk.colorInfo = {}
+    settings.afkDetection.waitId = Wait.time(afkCheckLoop, 1, -1)
   end
 end
 
@@ -562,6 +582,14 @@ function setTimer(enabled)
     -- Disable the timer
   end
 end
+function getAfk() return settings.afkDetection.enabled end
+
+function setAfkTime(value)
+  afk.colorInfo = {}
+  settings.afkDetection.threshold = value
+end
+function getAfkTime() return settings.afkDetection.threshold end
+
 function getTimer() return settings.timer.enabled end
 
 function setTimer1Time(value) settings.timer.initial = value end
@@ -577,49 +605,110 @@ function toggleDeckMode() deck.multiple = not deck.multiple end
 function getMultipleDeckMode() return deck.multiple end
 
 function afkCheckLoop()
-  -- Temporarily removed
-  --[[if settings.afkDetection.enabled then
-    local colorsToCheck = {
-      "Teal",
-      "Orange",
-      "Purple",
-      "Yellow",
-      "Green",
-      "Pink",
-      "White",
-      "Brown"
-    }
-    for _, color in ipairs(colorsToCheck) do
-      local player = Player[color]
-      if player.seated then
-        -- Only if there's a player in this seat
-        local playerInfo = afkTracker[color]
-        local pos = player.getPointerPosition()
-        if playerInfo == nil then
-          -- No player information exists for this color yet
-          afkTracker[color] = {
-            timestamp       = os.time(),
-            cursorPosition  = pos
-          }
-        elseif round(playerInfo.cursorPosition.x, 2) != round(pos.x, 2) or round(playerInfo.cursorPosition.y, 2) != round(pos.y, 2) or round(playerInfo.cursorPosition.z, 2) != round(pos.z, 2) then
-          -- Cursor position isn't the same. log the new position
-          playerInfo.timestamp = os.time()
-          playerInfo.cursorPosition = pos
-          afkTracker[color] = playerInfo
-        else
-          local timeToAFK = round((settings.afkDetection.threshold * 60) - (os.time() - playerInfo.timestamp), 0)
-          if timeToAFK <= 0 then
-            -- Switch player to spectator
-            player.broadcast("You have been moved to spectator to AFKing for more than " .. tostring(settings.afkDetection.threshold) .. " minute(s).", redColor)
-            printToAll("Player " .. player.steam_name .. " has been moved to spectator for being AFK for more than " .. tostring(settings.afkDetection.threshold) .. " minute(s).",  stringColorToRGB(color))
-            player.changeColor("Grey")
-          elseif timeToAFK <= 5 then
-            player.broadcast("You will be removed due to AFK in: " .. timeToAFK, redColor)
-          end
+  if settings.afkDetection.enabled then
+    for _, player in pairs(Player.getPlayers()) do
+      if afk.personInfo[player.steam_id] and afk.personInfo[player.steam_id].isNonVrPlayer then
+        -- If the player was eventually detected as a non-VR player then check if their cursor position has moved
+        local movementInfo = afk.movementInfo[player.steam_id]
+        if movementInfo == nil then
+          -- They are new so set their data and skip them
+          afk.movementInfo[player.steam_id] = {
+            color = player.color,
+            timestamp = Time.time,
+            cursorPosition = player.getPointerPosition() or Vector(0, 0, 0),
+            countdown = nil
+           }
+          break
         end
+
+        if player.color ~= "Grey" and player.color ~= "Black" and player.color ~= "Red" and player.color ~= "Blue" and not player.blindfolded then
+          -- Only if the player is seated as a guesser
+          local colorInfo = afk.colorInfo[player.color]
+          if colorInfo == nil or colorInfo.steamId != player.steam_id then
+            -- This is a new player so reset data and skip them
+            afk.colorInfo[player.color] = {
+              steamId = player.steam_id,
+              timestamp = Time.time,
+              cursorPosition = player.getPointerPosition(),
+              countdown = nil
+             }
+            break
+          end
+          local pos = player.getPointerPosition()
+          if pos != nil then
+            local max_delta = 0
+            for _, coord in pairs({'x','y','z'}) do
+              max_delta = math.max(max_delta,math.abs(movementInfo.cursorPosition[coord] - pos[coord]))
+            end
+            if max_delta > 0.01 then
+              -- Cursor position isn't the same. log the new position
+              movementInfo.timestamp = Time.time
+              movementInfo.cursorPosition = pos
+              movementInfo.countdown = nil
+            else
+              if Time.time - movementInfo.timestamp > settings.afkDetection.threshold * 60 - 5 then
+                -- Since this function isn't called exactly every second, use a pretty countdown
+                if movementInfo.countdown == nil then
+                  movementInfo.countdown = 5
+                end
+                if movementInfo.countdown < 0 then
+                  -- Switch player to spectator
+                  player.broadcast("You have been moved to spectator for AFKing more than " .. tostring(settings.afkDetection.threshold) .. " minute(s).", redColor)
+                  printToAll("Player " .. tostring(player.steam_name) .. " has been moved to spectator for being AFK for more than " .. tostring(settings.afkDetection.threshold) .. " minute(s).",  stringColorToRGB(player.color))
+                  player.changeColor("Grey")
+                else
+                  player.broadcast("You will be removed due to AFK in: " .. movementInfo.countdown, redColor)
+                end
+                movementInfo.countdown = movementInfo.countdown - 1
+              else
+                movementInfo.countdown = nil
+              end
+            end
+          end
+        else
+          -- If the player is immune to greying, then update their info
+          movementInfo.timestamp = Time.time
+          movementInfo.cursorPosition = Vector(0, 0, 0)
+          movementInfo.countdown = nil
+        end
+      else
+        -- Add pointer rotation to the list for the player
+        local personInfo = afk.personInfo[player.steam_id]
+        if personInfo == nil then
+          -- Person never seen before so create their profile and skip them
+          afk.personInfo[player.steam_id] = {
+            isNonVrPlayer = false,
+            currentPointerRotation = player.getPointerRotation(),
+            cprChanged = false,
+            uniquePointerRotations = {},
+            uniquePointerRotationsCount = 0
+          }
+          break
+        end
+
+        local rot = player.getPointerRotation()
+        if personInfo.currentPointerRotation != rot then
+          -- Wait as many cycles as it takes for any 'lookAt' commands to settle
+          personInfo.cprChanged = true
+        elseif personInfo.cprChanged == true then
+          -- If rotation is too close to a whole number, assume it was done by the "lookAt" command and ignore the change
+          if rot % 1 > 0.0001 and rot % 1 < 0.9999 then
+            if not personInfo.uniquePointerRotations[rot] then
+              -- We found a unique pointer rotation. add it to their list
+              personInfo.uniquePointerRotations[rot] = true
+              personInfo.uniquePointerRotationsCount = personInfo.uniquePointerRotationsCount + 1
+              if personInfo.uniquePointerRotationsCount >= afk.nonVrThreshold then
+                -- This is a non-VR person so set them to grey if their cursor position doesn't change
+                personInfo.isNonVrPlayer = true
+              end
+            end
+          end
+          personInfo.cprChanged = false
+        end
+        personInfo.currentPointerRotation = rot
       end
     end
-  end]]
+  end
 end
 
 function previousPage()
@@ -1007,8 +1096,7 @@ function onPlayerConnect(player)
 end
 
 function onPlayerDisconnect(player)
-  -- Destroy the timer for the disclaimer, if one exists
-  Timer.destroy(player.steam_id)
+  afk.personInfo[player.steam_id] = nil
 
   -- End session with player if one exists
   if gameState.status == 1 then
@@ -1384,7 +1472,7 @@ function onObjectDrop(color, agent)
   local players = ""
   local correct = ((gameState.turnTracker == 0 and cardColor == "Red") or (gameState.turnTracker == 1 and cardColor == "Blue")) and "TRUE" or "FALSE"
   for color,_ in pairs(votes[gameState.turnTracker]) do
-    if Player[color].seated then
+    if Player[color].steam_id != nil then
       players = players .. ((players == "") and Player[color].steam_id or (',' .. Player[color].steam_id))
     end
   end
@@ -1874,7 +1962,7 @@ function onChat(message, player)
       return false
     end
 
-    if not Player[color].seated then
+    if Player[color].steam_id == nil then
       player.broadcast("There's no player seated in " .. color:lower() .. "!", redColor)
       return false
     end
@@ -1887,7 +1975,7 @@ function onChat(message, player)
       return false
     end
 
-    if not Player[color].seated then
+    if Player[color].steam_id == nil then
       player.broadcast("There's no player seated in " .. color:lower() .. "!", redColor)
       return false
     end
@@ -2315,4 +2403,3 @@ function api_playerSessionEndCB(responseRaw)
     end
   end
 end
-

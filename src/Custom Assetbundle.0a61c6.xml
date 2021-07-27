@@ -891,7 +891,7 @@
 
         <Row class="settingRow">
           <Cell><Text class="settingText">AFK Detection</Text></Cell>
-          <Cell><Toggle id="afk" class="settingToggle" isOn="false" interactable="false" onValueChanged="afk()"></Toggle></Cell>
+          <Cell><Toggle id="afk" class="settingToggle" isOn="false" onValueChanged="afk()"></Toggle></Cell>
         </Row>
 
         <Row class="settingRow">
@@ -900,10 +900,10 @@
             <TableLayout class="sliderTable">
               <Row>
                 <Cell>
-                  <Slider id="afkTime" class="settingSlider" interactable="false" onValueChanged="afkTime()" />
+                  <Slider id="afkTime" class="settingSlider" value="7" onValueChanged="afkTime()" />
                 </Cell>
                 <Cell>
-                  <Text class="sliderNumber">0</Text>
+                  <Text id="afkTimeValue" class="sliderNumber">7</Text>
                 </Cell>
               </Row>
             </TableLayout>
