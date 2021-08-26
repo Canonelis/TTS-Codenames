@@ -701,14 +701,16 @@ function shufflePlayers()
     while #shuffledPlayers < 2 and #queue > 0 and not codemasterPlayers[queue[1].steam_id] do
       nextInQueue = table.remove(queue, 1)
       nextPlayer = findPlayerBySteamID(nextInQueue.steam_id)
-      if nextPlayer ~= nil and nextPlayer.color ~= "Grey" and nextPlayer.color ~= "Black" and not nextPlayer.blindfolded then
-          table.insert(shuffledPlayers, math.random(1, #shuffledPlayers + 1), nextPlayer)
-          codemasterPlayers[nextPlayer.steam_id] = true
-        if nextInQueue.stay then
-          table.insert(queue,nextInQueue)
+      if nextPlayer ~= nil then
+        if nextPlayer.color ~= "Grey" and nextPlayer.color ~= "Black" and not nextPlayer.blindfolded then
+            table.insert(shuffledPlayers, math.random(1, #shuffledPlayers + 1), nextPlayer)
+            codemasterPlayers[nextPlayer.steam_id] = true
+          if nextInQueue.stay then
+            table.insert(queue,nextInQueue)
+          end
+        else
+          nextPlayer.broadcast("[a020f0]» [ffffff]You were removed from the codemaster queue because you were either not sitting for your turn or were AFK! [a020f0]«")
         end
-      else
-        nextPlayer.broadcast("[a020f0]» [ffffff]You were removed from the codemaster queue because you were either not sitting for your turn or were AFK! [a020f0]«")
       end
     end
   end
