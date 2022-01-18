@@ -2466,7 +2466,7 @@
       "Name": "HandTrigger",
       "Transform": {
         "posX": -25.0,
-        "posY": 3.0,
+        "posY": 1.0,
         "posZ": 35.0,
         "rotX": 0.0,
         "rotY": 180.0,
@@ -2876,10 +2876,10 @@
       "HideWhenFaceDown": false,
       "Hands": false,
       "CustomMesh": {
-        "MeshURL": "https://cdn.tts-codenames.com/table.obj",
+        "MeshURL": "http://cloud-3.steamusercontent.com/ugc/1851543248352151702/F079142CADF38E2FF6E718A5A9B1A8815F815765/",
         "DiffuseURL": "https://cdn.tts-codenames.com/table_dark.png",
         "NormalURL": "",
-        "ColliderURL": "https://cdn.tts-codenames.com/table.obj",
+        "ColliderURL": "http://cloud-3.steamusercontent.com/ugc/1851543248352151702/F079142CADF38E2FF6E718A5A9B1A8815F815765/",
         "Convex": false,
         "MaterialIndex": 3,
         "TypeIndex": 4,

@@ -1,0 +1,10 @@
+function onLoad(_)
+	onPlayerChangeColor("Brown")
+end
+function onPlayerChangeColor(color)
+	if color == "Brown" and Player["Brown"].steam_id != nil then
+		self.UI.setAttribute("brownname","text",Player["Brown"].steam_name)
+	elseif Player["Brown"].steam_id == nil then
+		self.UI.setAttribute("brownname","text","")
+	end
+end
