@@ -317,20 +317,25 @@
 <Panel
   class="settingsPanel"
   width="850"
-  position="0 -4400 -100">
+  height="2164"
+  position="0 -3633 -240">
 
   <VerticalLayout spacing="10" childForceExpandHeight="false">
 
     <Text class="panelHeader">Deck Selector</Text>
+    <HorizontalLayout childForceExpandHeight="false">
+      <Button preferredHeight="150" fontSize="65" fontStyle="Bold" id="deckModeSwitch" onClick="deckMode()" tooltip="Add more than one deck\nto the selection.">+</Button>
+      <Button preferredHeight="150" preferredWidth="500" color="#31b32b" onClick="startGame()"><Text color="#ffffff" fontSize="65">Start Game</Text></Button>
+      <Button preferredHeight="150" fontSize="65" fontStyle="Bold" onClick="refreshDecks()">↻</Button>
+    </HorizontalLayout>
     <InputField id="deckSearch" fontSize="30" placeholder="Search for a deck..." preferredHeight="50" onValueChanged="searchDecks"></InputField>
     <HorizontalLayout childForceExpandHeight="false" childForceExpandWidth="true" fontSize="30" preferredHeight="50">
       <Button preferredHeight="50" fontSize="40" onClick="previousPage">«</Button>
       <Text id="pageMarker" preferredHeight="50" fontSize="40" color="White">Page: 0 / 0</Text>
       <Button preferredHeight="50" fontSize="40" onClick="nextPage">»</Button>
     </HorizontalLayout>
-
-    <VerticalScrollView flexibleHeight="1" scrollSensitivity="100">
-      <TableLayout padding="15 15 10 10" cellSpacing="10" autoCalculateHeight="true" color="#23272a">
+    <VerticalLayout>
+      <TableLayout padding="15 15 10 10" cellSpacing="0" autoCalculateHeight="true" color="#23272a">
 
         <Row id="deck1" class="deckEntry">
           <Button id="deck1Button" class="deckButton">
@@ -833,12 +838,7 @@
         </Row>
 
       </TableLayout>
-    </VerticalScrollView>
-    <HorizontalLayout childForceExpandHeight="false">
-      <Button preferredHeight="150" fontSize="65" fontStyle="Bold" id="deckModeSwitch" onClick="deckMode()">+</Button>
-      <Button preferredHeight="150" preferredWidth="500" color="#31b32b" onClick="startGame()"><Text color="#ffffff" fontSize="65">Start Game</Text></Button>
-      <Button preferredHeight="150" fontSize="65" fontStyle="Bold" onClick="refreshDecks()">↻</Button>
-    </HorizontalLayout>
+    </VerticalLayout>
   </VerticalLayout>
 </Panel>
 
@@ -846,7 +846,7 @@
 <!-- GAME SETTINGS -->
 <Panel
   class="settingsPanel"
-  position="800 -4400 -100">
+  position="800 -3100 -240">
 
   <VerticalLayout spacing="10" childForceExpandHeight="false">
 
@@ -969,7 +969,7 @@
 <Panel
   id="codemasterQueue"
   class="settingsPanel"
-  position="-800 -4400 -100">
+  position="-800 -3100 -240">
 
   <VerticalLayout spacing="10" childForceExpandHeight="false">
 
@@ -1072,10 +1072,15 @@
 
 <!-- Red team turn -->
 <Text id="redTurn" active="false" position="-750 1800 -100" rotation="0 180 0" color="Red" fontSize="1000">➔</Text>
+<Panel id="redTurnSquare" active="false" position="-2104 1820 -100" width="1098" height="500" color="rgba(0.856, 0.1, 0.094, 1)">
+	<Text color="White" fontSize="190" text="RED'S TURN"></Text>
+</Panel>
 
 <!-- Blue team turn -->
 <Text id="blueTurn" active="false" position="750 1800 -100" color="Blue" fontSize="1000">➔</Text>
-
+<Panel id="blueTurnSquare" active="false" position="2104 1820 -100" width="1098" height="500" color="rgba(0.118, 0.53, 1, 1)">
+	<Text color="White" fontSize="190" text="BLUE'S TURN"></Text>
+</Panel>
 <!-- Table background -->
 <!-- Blue team box -->
 <Panel position="1565 479 -100" width="20" height="1696" color="rgba(0.122 0.529 1 1)"/>
