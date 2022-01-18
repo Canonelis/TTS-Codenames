@@ -126,8 +126,8 @@ votes = {
 ----------[ Game state ]----------
 gameState =
 {
-  -- Tracks whether the current game has started (-1 = not started, 0 = starting, 1 = started)
-  status = -1,
+  -- Tracks whether the current game has started (-2 = not started, -1 = ended, 0 = starting, 1 = started)
+  status = -2,
 
   -- Current game is on the first turn or not
   firstTurn = true,
@@ -412,7 +412,7 @@ function onload(saveState)
       -- currently selected decks
       -- table ui elements
 
-    if decodedSaveState.version == version and decodedSaveState.gameState.status == 1 then
+    if decodedSaveState.version == version and decodedSaveState.gameState.status != -2 then
       -- Load the previous gameState
       gameState = decodedSaveState.gameState
 
@@ -505,7 +505,11 @@ end
 function setTimer(enabled)
   settings.timer.enabled = enabled
   if settings.timer.enabled then
-    startTime()
+    if gameState.status == 1 then
+      startTime()
+    else
+      tableObject.call("stopTimer", true)
+    end
   else
     -- Disable the timer
   end
@@ -1093,6 +1097,7 @@ function startGame(player)
 
   -- A new game is currently starting - block any other new game requests
   gameState.status = 0
+  Wait.time(function() if gameState.status == 0 then gameState.status = 1 end end, 8, 1)
 
   -- Reset the game to its original state
   resetGame()
