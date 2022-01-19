@@ -3,7 +3,7 @@
   <Panel
     class="settingsPanel"
     width="750"
-    height="1100"
+    height="1650"
     padding="10 10 10 10"
     color="Black">
   </Panel>
@@ -317,8 +317,7 @@
 <Panel
   class="settingsPanel"
   width="850"
-  height="2164"
-  position="0 -3633 -240">
+  position="0 -3400 -240">
 
   <VerticalLayout spacing="10" childForceExpandHeight="false">
 
@@ -334,7 +333,8 @@
       <Text id="pageMarker" preferredHeight="50" fontSize="40" color="White">Page: 0 / 0</Text>
       <Button preferredHeight="50" fontSize="40" onClick="nextPage">»</Button>
     </HorizontalLayout>
-    <VerticalLayout>
+
+    <VerticalScrollView flexibleHeight="1" scrollSensitivity="100">
       <TableLayout padding="15 15 10 10" cellSpacing="0" autoCalculateHeight="true" color="#23272a">
 
         <Row id="deck1" class="deckEntry">
@@ -838,7 +838,8 @@
         </Row>
 
       </TableLayout>
-    </VerticalLayout>
+    </VerticalScrollView>
+
   </VerticalLayout>
 </Panel>
 
@@ -846,13 +847,13 @@
 <!-- GAME SETTINGS -->
 <Panel
   class="settingsPanel"
-  position="800 -3100 -240">
+  position="800 -3400 -240">
 
   <VerticalLayout spacing="10" childForceExpandHeight="false">
 
     <Text class="panelHeader">Game Settings</Text>
 
-    <VerticalScrollView flexibleHeight="1" scrollSensitivity="100">
+    <VerticalScrollView flexibleHeight="1" scrollSensitivity="100" color="#2C2F34" noScrollbars="true">
       <TableLayout padding="0 0 0 0" autoCalculateHeight="true" cellBackgroundColor="#23272a" rowBackgroundColor="#23272a">
 
         <Row class="subcategoryRow">
@@ -969,7 +970,7 @@
 <Panel
   id="codemasterQueue"
   class="settingsPanel"
-  position="-800 -3100 -240">
+  position="-800 -3400 -240">
 
   <VerticalLayout spacing="10" childForceExpandHeight="false">
 
@@ -1036,6 +1037,10 @@
           <Button id="queueButton10" class="queueButton" color="#ffffff" onclick="remove(10)">
             <Text id="queueText10" class="queueText" fontSize="50"></Text>
           </Button>
+        </Row>
+
+        <Row preferredHeight="475">
+          <!-- spacer -->
         </Row>
 
       </TableLayout>
