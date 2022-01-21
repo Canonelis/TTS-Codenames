@@ -336,6 +336,33 @@ function findInArray(val,arr,cmp_func) --cmp_func is optional, a function with t
   return nil
 end
 
+function printTable(t,return_as_string,table_id_list)
+	local s
+	return_as_string = return_as_string == true -- default is false
+	if table_id_list == nil then -- used if table has been seen before. don't display it again
+		table_id_list = {}
+	end
+	if type(t) == "nil" or type(t) == "boolean" then
+		s = string.upper(tostring(t))
+	elseif type(t) == "number" or type(t) == "function" then
+		s = tostring(t)
+	elseif type(t) == "table" and table_id_list[t] == nil then
+    table_id_list[t] = true
+    local strings_list = {}
+    for i, v in pairs(t) do
+      table.insert(strings_list,tostring(i)..":"..printTable(v,true,table_id_list))
+    end
+    s = "{"..table.concat(strings_list,",").."}"
+	else
+		s = '"'..tostring(t)..'"'
+	end
+	if return_as_string then
+		return s
+	else
+		return print(""..string.gsub(s,"%[([0-9A-Fa-f][0-9A-Fa-f]+)%]","[#%1]"))
+	end
+end
+
 function onload(saveState)
 
   -- Codenames script version
@@ -434,9 +461,17 @@ function onload(saveState)
 
       -- Update the enabled property for agents
       agents = decodedSaveState.agents
-      for agentGUID, agentData in pairs(decodedSaveState.agents) do
-        if agents[agentGUID] ~= nil and agents[agentGUID].covering ~= nil then
-          coverCard(agents[agentGUID].covering, agentGUID)
+
+      -- Make the correct extra agent interactable
+      extraBlue.interactable = agents[extraBlue.guid].enabled
+      extraRed.interactable = agents[extraRed.guid].enabled
+
+      for agentGUID, agentData in pairs(agents) do
+        if agentData.covering ~= nil then
+          coverCard(agentData.covering, agentGUID)
+        elseif agentData.enabled and getObjectFromGUID(agentGUID) then
+          -- use onObjectDrop to reset its position if it is out of place
+          onObjectDrop("Black", getObjectFromGUID(agentGUID))
         end
       end
     end
