@@ -33,6 +33,7 @@ More info:
 
 redColor  = {0.856, 0.1, 0.094}
 blueColor = {0.118, 0.53, 1}
+dealCards_WaitId = nil
 
 -- Color = Blue/Red/Black/White
 cards = {
@@ -413,6 +414,10 @@ function onload(saveState)
       -- table ui elements
 
     if decodedSaveState.version == version and decodedSaveState.gameState.status != -2 then
+      -- Return players to their original seats if loading a very recent save
+      if decodedSaveState.gameState.status == 1 and os.time() - decodedSaveState.time < 60 then
+        tableObject.call("assignSeats",decodedSaveState.seating)
+      end
       -- Load the previous gameState
       gameState = decodedSaveState.gameState
 
@@ -465,6 +470,14 @@ function onSave()
   saveData.analytics  = analytics
   saveData.cards      = cards
   saveData.agents     = agents
+  
+  saveData.time       = os.time()
+  saveData.seating    = {}
+  for _, p in pairs(Player.getPlayers()) do
+    if p.color != "Grey" then
+      saveData.seating[p.steam_id] = p.color
+    end
+  end
 
   return JSON.encode(saveData)
 end
@@ -1210,7 +1223,6 @@ function setupGame()
   gameState.firstTurn = true
 end
 
-dealCards_WaitId = nil
 function dealCardsDelayed()
   if dealCards_WaitId != nil then
     Wait.stop(dealCards_WaitId)
