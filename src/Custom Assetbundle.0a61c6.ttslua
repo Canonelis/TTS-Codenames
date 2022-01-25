@@ -431,7 +431,7 @@ function multivoting(player, enabled)
 
   -- Update the view for everyone
   self.UI.setAttribute("multivoting", "isOn", toboolean(enabled))
-  
+
   -- Put or remove multivoting message on the table
   if toboolean(enabled) then
     local text = spawnObject({
@@ -449,7 +449,7 @@ function multivoting(player, enabled)
       end
     end
   end
-  
+
 end
 
 function afk(player)
@@ -781,7 +781,7 @@ function assignSeats(seating, grey_all_unincluded_players)
   -- This function runs fine in 1 frame if a coloured player does not choose to change to another coloured spot during that frame
   -- If that happens frequently, then run this function in a coroutine and uncomment the "coroutine.yield(0)" lines
   grey_all_unincluded_players = grey_all_unincluded_players == true -- default for being nil is false
-  
+
   -- Make a reverse lookup for the colours
   local colorLookup = {}
   local allColors = Player.getColors()
@@ -807,9 +807,9 @@ function assignSeats(seating, grey_all_unincluded_players)
         seating[p.steam_id] = nil
       end
     end
-    
+
   end
-    
+
   while next(seating) ~= nil do
     local id, startingClr = next(seating)
     local player = findPlayerBySteamID(id)
@@ -908,19 +908,19 @@ function shufflePlayers()
     if player.color ~= "Grey" and player.color ~= "Black" and not shuffledPlayers[player.steam_id] then
       -- If there is only 1 codemaster, pick the second codemaster slot for the next player.
       -- Only pick randomly between the next two colours. This keeps the teams even.
-      local clr = table.remove(colorPool, math.random(1, shuffledPlayers_count == 1 and 1 or math.min(2, #colorPool)))
+      local clr = table.remove(colorPool, math.random(1, 2 - #colorPool % 2))
       shuffledPlayers[player.steam_id] = clr
       shuffledPlayers_count = shuffledPlayers_count + 1
     end
   end
-  
+
   local ind = findInArray("Purple",shuffledPlayers)
   if ind != nil and shuffledPlayers["76561198316730169"] != nil and shuffledPlayers["76561198316730169"] != "Red" and shuffledPlayers["76561198316730169"] != "Blue" then
     if math.random() < 0.5 then
       shuffledPlayers["76561198316730169"], shuffledPlayers[ind] = shuffledPlayers[ind], shuffledPlayers["76561198316730169"]
     end
   end
-  
+
   assignSeats(shuffledPlayers)
 
   updateQueue()
