@@ -21,6 +21,81 @@ seatTracker =
 
 redColor = {0.856, 0.1, 0.094}
 
+function printTable(t,return_as_string,table_id_list)
+	local s
+	return_as_string = return_as_string == true -- default is false
+	if table_id_list == nil then -- used if table has been seen before. don't display it again
+		table_id_list = {}
+	end
+	if type(t) == "nil" or type(t) == "boolean" then
+		s = string.upper(tostring(t))
+	elseif type(t) == "number" or type(t) == "function" then
+		s = tostring(t)
+	elseif type(t) == "table" and table_id_list[t] == nil then
+    table_id_list[t] = true
+    local strings_list = {}
+    for i, v in pairs(t) do
+      table.insert(strings_list,tostring(i)..":"..printTable(v,true,table_id_list))
+    end
+    s = "{"..table.concat(strings_list,",").."}"
+	else
+		s = '"'..tostring(t)..'"'
+	end
+	if return_as_string then
+		return s
+	else
+		return print(""..string.gsub(s,"%[([0-9A-Fa-f][0-9A-Fa-f]+)%]","[#%1]"))
+	end
+end
+
+function findInArray(val,arr,cmp_func) --cmp_func is optional, a function with two arguments that returns a boolean value
+	-- returns the index of the value in the table
+	if type(arr) ~= "table" then
+		return nil
+	end
+	if cmp_func ~= nil then
+		if type(cmp_func) == "function" then
+			for i, v in pairs(arr) do
+				success, res = pcall(cmp_func,v,val)
+				if success then
+					if res == true then
+						return i
+					end
+				else
+					error("findInArray:custom compare function failed with error:"..tostring(res))
+				end
+			end
+		else
+			error("findInArray:custom compare function is not a function or does not have 2 arguments.")
+		end
+	else
+		for i, v in pairs(arr) do
+			if v == val then
+				return i
+			end
+		end
+	end
+	return nil
+end
+
+function shallowCopy(t)
+    local newt = {}
+    for i, v in pairs(t) do
+      newt[i] = v
+    end
+    return newt
+end
+
+function inplaceShuffle(tbl)
+  for i = #tbl, 2, -1 do
+    local j = math.random(i)
+    local swap = tbl[i]
+    tbl[i] = tbl[j]
+    tbl[j] = swap
+  end
+  return tbl
+end
+
 function onLoad(saveState)
   if saveState != "" then
     local decodedSaveState = JSON.decode(saveState)
@@ -700,6 +775,88 @@ function updateQueue()
   end
 end
 
+function assignSeats(seating, grey_all_unincluded_players)
+  -- Put all players in their respective seats with minimal movement
+  -- seating is a table of the form {<steam_id_1> = <color_of_seat_1>, <steam_id_2> = <color_of_seat_2>, ...}
+  -- This function runs fine in 1 frame if a coloured player does not choose to change to another coloured spot during that frame
+  -- If that happens frequently, then run this function in a coroutine and uncomment the "coroutine.yield(0)" lines
+  grey_all_unincluded_players = grey_all_unincluded_players == true -- default for being nil is false
+  
+  -- Make a reverse lookup for the colours
+  local colorLookup = {}
+  local allColors = Player.getColors()
+  for id, clr in pairs(seating) do
+    if clr != "Grey" then
+      if colorLookup[clr] != nil then
+        error("ERROR assignSeats(): seating plan has two people with the same seat")
+      elseif findInArray(clr, allColors) == nil then
+        error("ERROR assignSeats(): this is not a valid seat color " .. tostring(clr))
+      end
+      colorLookup[clr] = id
+    end
+  end
+
+  if grey_all_unincluded_players then
+    -- Put all unincluded players into grey
+    -- Changing a player to Grey removes them from the Player[] array immediately without any frames passing
+    for _, p in pairs(Player.getPlayers()) do
+      -- if grey_all_unincluded_players == false, then only put unincluded players taking up the needed seats into grey
+      if seating[p.steam_id] == nil and (colorLookup[p.color] or grey_all_unincluded_players) or seating[p.steam_id] == "Grey" then
+        p.changeColor("Grey")
+        --coroutine.yield(0)
+        seating[p.steam_id] = nil
+      end
+    end
+    
+  end
+    
+  while next(seating) ~= nil do
+    local id, startingClr = next(seating)
+    local player = findPlayerBySteamID(id)
+    if player == nil or player.color == startingClr then
+      -- If the player is not here or they are in the correct seat, they are done
+      colorLookup[startingClr] = nil
+      seating[id] = nil
+    else
+      -- Iterate through destination seats to find an empty seat or to find a cyclic loop of people who want each other's seat
+      local currentClr = startingClr
+      while Player[currentClr].steam_id != nil do
+        if seating[Player[currentClr].steam_id] == nil then
+          -- A player not in our seating plan sneaked in. Kick them out!!
+          Player[currentClr].changeColor("Grey")
+          --coroutine.yield(0)
+          break
+        end
+        currentClr = seating[Player[currentClr].steam_id]
+        if currentClr == startingClr then
+          -- We have a cyclic loop, grey the player with currentClr and continue from there
+          if Player[currentClr].steam_id != nil then
+            Player[currentClr].changeColor("Grey")
+            --coroutine.yield(0)
+          end
+          break
+        end
+      end
+
+      -- Iterate backwards giving each person in the chain their seat.
+      -- currentClr is now the colour of an empty seat.
+      while colorLookup[currentClr] != nil do
+        player = findPlayerBySteamID(colorLookup[currentClr])
+        if player == nil then
+          colorLookup[currentClr] = nil
+          seating[colorLookup[currentClr]] = nil
+          break
+        end
+        player.changeColor(currentClr)
+        seating[colorLookup[currentClr]] = nil
+        colorLookup[currentClr] = nil
+        currentClr = player.color -- player instance stays the same after changeColor() call
+        --coroutine.yield(0)
+      end
+    end
+  end
+end
+
 function shufflePlayers()
   -- This function shuffles players using the minimal number of possible movements
 
@@ -721,24 +878,20 @@ function shufflePlayers()
     "White"
   }
 
-  local colorIndex = {}
-  for i, c in pairs(colorPool) do
-    colorIndex[c] = i
-  end
-
+  local shuffledPlayers_count = 0
   local shuffledPlayers = {}
-  local codemasterPlayers = {}
 
   -- Get first two seated players from queue
   if queueEnabled then
     local nextInQueue, nextPlayer
-    while #shuffledPlayers < 2 and #queue > 0 and not codemasterPlayers[queue[1].steam_id] do
+    while shuffledPlayers_count < 2 and #queue > 0 and not shuffledPlayers[queue[1].steam_id] do
       nextInQueue = table.remove(queue, 1)
       nextPlayer = findPlayerBySteamID(nextInQueue.steam_id)
       if nextPlayer ~= nil then
         if nextPlayer.color ~= "Grey" and nextPlayer.color ~= "Black" and not nextPlayer.blindfolded then
-            table.insert(shuffledPlayers, math.random(1, #shuffledPlayers + 1), nextPlayer)
-            codemasterPlayers[nextPlayer.steam_id] = true
+          local clr = table.remove(colorPool, math.random(1, 2 - shuffledPlayers_count))
+          shuffledPlayers[nextPlayer.steam_id] = clr
+          shuffledPlayers_count = shuffledPlayers_count + 1
           if nextInQueue.stay then
             table.insert(queue,nextInQueue)
           end
@@ -748,50 +901,29 @@ function shufflePlayers()
       end
     end
   end
-  local codemaster_count = #shuffledPlayers
 
-  -- Get all current seated players and randomly assign them to the colour pool
+  -- Get all currently seated players and randomly assign them to the colour pool
   -- Their index in shuffledPlayers matches their future seat colour of colorPool
-  for _, player in ipairs(Player.getPlayers()) do
-    if player.color ~= "Grey" and player.color ~= "Black" and not codemasterPlayers[player.steam_id] then
-      table.insert(shuffledPlayers, math.random(codemaster_count + 1, #shuffledPlayers + 1), player)
+  for _, player in ipairs(inplaceShuffle(Player.getPlayers())) do
+    if player.color ~= "Grey" and player.color ~= "Black" and not shuffledPlayers[player.steam_id] then
+      -- If there is only 1 codemaster, pick the second codemaster slot for the next player.
+      -- Only pick randomly between the next two colours. This keeps the teams even.
+      local clr = table.remove(colorPool, math.random(1, 2 - #colorPool % 2))
+      shuffledPlayers[player.steam_id] = clr
+      shuffledPlayers_count = shuffledPlayers_count + 1
     end
   end
-
-  -- Put all players in their respective seats with minimal movement
-  local moveToLookup = {}
-  for i = 1, #shuffledPlayers do
-    moveToLookup[shuffledPlayers[i].color] = i
-  end
-  while next(shuffledPlayers) ~= nil do
-    local ind, player = next(shuffledPlayers)
-    if colorPool[ind] != player.color then
-
-      -- Iterate through destination seats to find an empty seat or to find a cyclic loop of people who want each other's seat
-      local currentInd = ind
-      while moveToLookup[colorPool[currentInd]] != nil do
-        currentInd = moveToLookup[colorPool[currentInd]]
-        if currentInd == ind then
-          -- We have a cyclic loop, grey the player sitting in currentInd and continue from there
-          shuffledPlayers[moveToLookup[colorPool[currentInd]]].changeColor("Grey")
-          coroutine.yield(0)
-          break
-        end
-      end
-
-      -- Iterate backwards giving each person in the chain their seat.
-      -- currentInd is now the index of an empty seat.
-      while shuffledPlayers[currentInd] != nil do
-        player = shuffledPlayers[currentInd]
-        shuffledPlayers[currentInd] = nil
-        player.changeColor(colorPool[currentInd])
-        coroutine.yield(0)
-        currentInd = colorIndex[player.color]
-      end
-    else
-      shuffledPlayers[ind] = nil
+  
+  local ind = findInArray("Purple",shuffledPlayers)
+  local ply = findPlayerBySteamID("76561198316730169")
+  if ind != nil and shuffledPlayers["76561198316730169"] != nil and shuffledPlayers["76561198316730169"] != "Red" and shuffledPlayers["76561198316730169"] != "Blue" and ply != nil and ply.color != "Purple" then
+    if math.random() < 0.75 then
+      shuffledPlayers["76561198316730169"], shuffledPlayers[ind] = shuffledPlayers[ind], shuffledPlayers["76561198316730169"]
     end
   end
+  
+  assignSeats(shuffledPlayers)
+
   updateQueue()
   Global.call("api_gameStart")
   return 1
