@@ -458,9 +458,10 @@ function onLoad(saveState)
       -- Load the card data and update their UI
       cards = decodedSaveState.cards
       dealCards()
-      
+
       -- Load decks and their selections
-      deck = decodedSaveState.deck
+      deck.selected = decodedSaveState.deck_selected
+      deck.multiple = decodedSaveState.deck_multiple
 
       for i = 1, 20, 1 do
         local buttonName = "deck" .. i .. "Button"
@@ -478,15 +479,15 @@ function onLoad(saveState)
       else
         tableObject.UI.setAttribute("deckModeSwitch", "color", "#ffffff")
       end
-      
+
       -- Load Turn Indicators
       local currentTurn = (gameState.turnTracker == 0 and "red" or "blue") .. "Turn"
       local teamColorTurn = gameState.turnTracker == 0 and "Red" or "Blue"
       tableObject.UI.setAttribute(currentTurn, "active", true)
       tableObject.UI.setAttribute(currentTurn .. "BG", "active", true)
       tableObject.UI.setAttribute(currentTurn .. "Square", "active", true)
-      tableObject.UI.setAttribute("timer", "outline", teamColorTurn)      
-      
+      tableObject.UI.setAttribute("timer", "outline", teamColorTurn)
+
       -- Update the enabled property for agents
       agents = decodedSaveState.agents
       for agentGUID, agentData in pairs(decodedSaveState.agents) do
@@ -525,8 +526,9 @@ function onSave()
   saveData.analytics  = analytics
   saveData.cards      = cards
   saveData.agents     = agents
-  saveData.deck       = deck
-  
+  saveData.deck_selected       = deck.selected
+  saveData.deck_multiple       = deck.multiple
+
   saveData.time       = os.time()
   saveData.seating    = {}
   for _, p in pairs(Player.getPlayers()) do
