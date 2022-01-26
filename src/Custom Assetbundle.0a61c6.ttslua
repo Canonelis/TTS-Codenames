@@ -3,6 +3,9 @@
 -- Tracks the players currently in queue
 queue = {}
 
+-- Delays text updating inside deck search box
+searchDecks_WaitIds = {}
+
 -- Tracks color switching
 seatTracker =
 {
@@ -145,7 +148,13 @@ function searchDecks(player, searchTerm)
   if player.color == "Grey" then
     return
   end
+  if searchDecks_WaitIds[player.steam_id] != nil then
+    Wait.stop(searchDecks_WaitIds[player.steam_id])
+  end
+  searchDecks_WaitIds[player.steam_id] = Wait.time(function() searchDecks_Delayed(player, searchTerm) end, 0.4, 1)
+end
 
+function searchDecks_Delayed(player, searchTerm)
   self.UI.setAttribute("deckSearch", "text", searchTerm)
 
   Global.call("searchDecks", searchTerm)
