@@ -221,7 +221,7 @@ deck =
 
   -- Current result page
   pageNum = 1,
-  
+
   -- Used to save the current deck data
   currentDeckList = {}
 }
@@ -242,7 +242,7 @@ function resetDeckHandler()
   {
     -- Tracks deck fetch request
     fetchingDecks = false,
-    
+
     -- Total number of decks expected
     totalDecks = 0,
 
@@ -251,15 +251,19 @@ function resetDeckHandler()
 
     -- Number of decks to request at a time. JSON.decode is a very slow function.
     DECK_REQUEST_COUNT = 15,
-    
+
     -- A table to track which page numbers have come in so far
     acquiredPages = {},
-    
+
     -- The list of all decks
     entireDeckList = {}
   }
 end
 resetDeckHandler()
+
+------ Track players who come in the room ----
+-- If they sit in red or blue, then reload the global xml in case they can't see it
+isPlayerNewlyJoined = {}
 
 ----------[ Character sets ]----------
 
@@ -541,6 +545,13 @@ function onload(saveState)
   if settings.afkDetection.enabled then
     settings.afkDetection.waitId = Wait.time(afkCheckLoop, 1, -1)
   end
+
+  -- If there are many custom assets in the save, sometimes the global xml UI won't load
+  -- reset it for everyone in the room
+  Wait.time(function()
+         UI.setXml(globalXmlText)
+        end,
+        5, 1)
 end
 
 function onSave()
@@ -738,22 +749,22 @@ end
 
 function refreshDeckElements()
   -- Get current deck elements to show
-  
+
   local deckList = {}
-  
+
   -- Keep a count of decks that would make it into the pages
   local count = 0
   -- Matching decks between these counts will be included in the displayed deck list
   local count_min = (deck.pageNum - 1) * deck.pageSize + 1
   local count_max = deck.pageNum * deck.pageSize
-  
+
   for i = 1, #deckHandler.entireDeckList do
     if deck.searchTerm == nil or deck.searchTerm == "" or #deck.searchTerm > 100
         or deckHandler.entireDeckList[i]["author"] and deckHandler.entireDeckList[i]["author"]["displayName"] and string.find(deckHandler.entireDeckList[i]["author"]["displayName"], deck.searchTerm, 1, true)
         or deckHandler.entireDeckList[i]["name"] and string.find(deckHandler.entireDeckList[i]["name"], deck.searchTerm, 1, true)
         or deckHandler.entireDeckList[i]["description"] and string.find(deckHandler.entireDeckList[i]["description"], deck.searchTerm, 1, true)
       then
-      
+
       -- When the count of the deck is in the correct range, add it to the list of decks to display
       count = count + 1
       if count >=  count_min and count <= count_max then
@@ -761,17 +772,17 @@ function refreshDeckElements()
       end
     end
   end
-  
+
   -- Check if we are past the last page and redo function
   if count > 0 and #deckList == 0 then
     deck.pageNum = math.ceil(count / deck.pageSize)
     refreshDeckElements()
     return
   end
-  
+
   -- Set this to be able to calculate the final page number available
   deck.matchingDecks = count
-  
+
   for i = 1, 20, 1 do
     if deckList[i] then
       tableObject.UI.setAttribute("deck" .. i .. "Button", "onClick", "setDeck(" .. deckList[i]["deckID"] .. ")")
@@ -781,7 +792,7 @@ function refreshDeckElements()
         tableObject.UI.setAttribute("deck" .. i .. "Image", "active", false)
       elseif deckList[i]["author"]["profilePicture"] then
         tableObject.UI.setAttribute("deck" .. i .. "Official", "active", false)
-        
+
         tableObject.UI.setAttributes("deck" .. i .. "Image", {
           active  = true,
           image   = deckList[i]["author"]["steamID"]
@@ -813,7 +824,7 @@ function refreshDeckElements()
     end
   end
   tableObject.UI.setValue("pageMarker", "Page: " .. deck.pageNum .. " / " .. math.ceil(deck.matchingDecks / deck.pageSize))
-  
+
   -- Save the current deck list
   deck.currentDeckList = deckList
 end
@@ -1182,6 +1193,12 @@ function onPlayerConnect(player)
   -- Send analytics disclaimer
   player.print(chatDisclaimer, {1, 1, 1})
 
+  -- Keep track of newly joined players that haven't had the global xml reloaded
+  local id = player.steam_id
+  if id then
+    isPlayerNewlyJoined[id] = true
+  end
+
   -- Check the blacklist for the player
   WebRequest.get(analytics.url .. "/games/player/blacklisted/" .. player.steam_id, function(responseRaw)
     if responseRaw.is_done and not responseRaw.is_error and responseRaw.text != "" then
@@ -1222,6 +1239,22 @@ function onPlayerChangeColor(color)
       yaw      = 0,
       distance = 45
     })
+  end
+
+  -- Reset the global xml if the player hasn't had it reloaded while they were in the room
+  if (color == "Red" or color == "Blue") then
+    local id = Player[color].steam_id
+    if id and isPlayerNewlyJoined[id] then
+      UI.setXml(globalXmlText)
+      Wait.frames(function()
+            UI.setAttributes("redClueText", {text = currentEnteredClue["Red"] or "", placeholder   = "Enter clue here"})
+            UI.setAttributes("blueClueText", {text = currentEnteredClue["Blue"] or "", placeholder   = "Enter clue here"})
+          end,
+          2)
+      for _, p in pairs(Player.getPlayers()) do
+        isPlayerNewlyJoined[p.steam_id] = nil
+      end
+    end
   end
 
   -- Reset the player's vote (if necessary)
@@ -1315,7 +1348,7 @@ function downloadDecks()
   end
   for i = 1, 20, 1 do
     tableObject.UI.hide("deck" .. i)
-  end  
+  end
   api_getDecks()
   -- Display message when done fetching decks
   Wait.condition(
@@ -2256,11 +2289,11 @@ end
 -------------- /games/decks --------------
 function api_getDecks()
   deckHandler.fetchingDecks = true
-  
-  
+
+
   -- If fetching decks doesn't complete after 15 seconds, then dislay an error
   Wait.condition(function() end, function() return not deckHandler.fetchingDecks end, 15, function() error("Error getting decks.") end)
-  
+
   -- Request a single deck just to see how many decks there are to request
   apiGet("/games/decks?pageSize=1&pageNum=0", api_getDecksCB)
 end
@@ -2270,9 +2303,9 @@ function api_getDecksCB(responseRaw)
   if response == nil then
     return
   end
-  
+
   deckHandler.totalDecks = tonumber(response["decks"]["totalDecks"])
-  
+
   -- Update the internal list of decks
   if deckHandler.totalDecks == nil then
     print("Error getting decks2.")
@@ -2295,7 +2328,7 @@ function api_getDeckSubsetCB(responseRaw)
   if response == nil then
     return
   end
-  
+
   -- Get the page number for this request from the URL
   local pageNum = ""
   for i = #responseRaw.url, 1, -1 do
@@ -2306,35 +2339,35 @@ function api_getDeckSubsetCB(responseRaw)
       break
     end
   end
-  
+
   if tonumber(pageNum) == nil then
     print("Error: The url has no page number " .. responseRaw.url)
     return
   else
     pageNum = tonumber(pageNum) + 1
   end
-  
+
   -- Add the decks to entireDeckList at the appropriate index
   local deckList = response["decks"]["deckList"]
-  
+
   local pageStart = (pageNum - 1) * deckHandler.DECK_REQUEST_COUNT
   for i, deck in pairs(deckList) do
     deckHandler.entireDeckList[pageStart + i] = deck
   end
-  
+
   -- Check if we have already processed this page
   if deckHandler.acquiredPages[pageNum] then
     print("Error: already processed page "..pageNum.." "..printTable(deckHandler.acquiredPages,true))
     return
   end
   deckHandler.acquiredPages[pageNum] = true
-  
+
   if #deckHandler.acquiredPages == deckHandler.totalPages then
     -- Deck is complete! Populate it!
     if #deckHandler.entireDeckList != deckHandler.totalDecks then
       print("Error: not all decks populated.  Expected ",deckHandler.totalDecks," and got ",#deckHandler.entireDeckList)
     end
-    
+
     local assets = UI.getCustomAssets()
     local asset_names = {}
     local isAssetsUpdated = false
@@ -2343,7 +2376,7 @@ function api_getDeckSubsetCB(responseRaw)
     for _, entry in pairs(assets) do
       asset_names[entry.name] = true
     end
-    
+
     deckList = deckHandler.entireDeckList
     for i = 1, #deckList do
       if deckList[i]["author"]["steamID"] and deckList[i]["author"]["profilePicture"] and not asset_names[deckList[i]["author"]["steamID"]] then
@@ -2364,7 +2397,7 @@ function api_getDeckSubsetCB(responseRaw)
     else
       refreshDeckElements()
     end
-    
+
     resetDeckHandler()
     deckHandler.entireDeckList = deckList
   else
@@ -2566,3 +2599,61 @@ function api_playerSessionEndCB(responseRaw)
     end
   end
 end
+
+globalXmlText = [[<Panel id="redClues"
+       visibility="Red"
+       rectAlignment="LowerCenter"
+       color="#da1918"
+       height="100"
+       width="650"
+       outline="#ffffff"
+       outlineSize="2 -2">
+
+       <Panel rectAlignment="UpperRight" width="25" height="25">
+         <Text id="codemasterHelp"
+             fontStyle="Bold"
+             fontSize="20"
+             color="#ffffff"
+             tooltip="Type in your clue and push ENTER once you're finished. Clues can&#xA;only be one word or contain one hyphen in them. You must include&#xA;a number (0, inf, 1-9) in your clue.&#xA;&#xA;Clues can be in any of the following formats:&#xA;* clue - 0&#xA;* clue inf&#xA;* clue1&#xA;* clue-clue 9&#xA;* etc">?
+           </Text>
+       </Panel>
+
+       <InputField id="redClueText"
+                   placeholder="Enter clue here"
+                   alignment="MiddleCenter"
+                   height="30"
+                   width="550"
+                   lineType="MultiLineNewLine"
+                   onValueChanged="clueEntered">
+       </InputField>
+
+</Panel>
+
+<Panel id="blueClues"
+       visibility="Blue"
+       rectAlignment="LowerCenter"
+       color="#1f87ff"
+       height="100"
+       width="650"
+       outline="#ffffff"
+       outlineSize="2 -2">
+
+       <Panel rectAlignment="UpperRight" width="25" height="25">
+         <Text id="codemasterHelp"
+             fontStyle="Bold"
+             fontSize="20"
+             color="#ffffff"
+             tooltip="Type in your clue and push ENTER once you're finished. Clues can&#xA;only be one word or contain one hyphen in them. You must include&#xA;a number (0, inf, 1-9) in your clue.&#xA;&#xA;Clues can be in any of the following formats:&#xA;* clue - 0&#xA;* clue inf&#xA;* clue1&#xA;* clue-clue 9&#xA;* etc">?
+           </Text>
+       </Panel>
+
+       <InputField id="blueClueText"
+                   placeholder="Enter clue here"
+                   alignment="MiddleCenter"
+                   height="30"
+                   width="550"
+                   lineType="MultiLineNewLine"
+                   onValueChanged="clueEntered">
+       </InputField>
+
+</Panel>]]
