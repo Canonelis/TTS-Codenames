@@ -222,7 +222,7 @@ deck =
   -- Current result page
   pageNum = 1,
 
-  -- Used to save the current deck data
+  -- Used to save the current deck page since saving the entire list is much too big
   currentDeckList = {}
 }
 
@@ -423,7 +423,7 @@ afk =
 function onLoad(saveState)
 
   -- Codenames script version
-  version = "3.2.3"
+  version = "3.2.3a"
 
   ----------[ Script object initialization ]----------
   -- Control panels and table objects
@@ -453,9 +453,6 @@ function onLoad(saveState)
 
   -- Create variable for storing typed clues
   currentEnteredClue = {}
-
-  -- Get the list of decks
-  api_getDecks()
 
   buttonBlue.createButton({
   label="[END TURN]", click_function="endTurn", function_owner=self,
@@ -490,24 +487,20 @@ function onLoad(saveState)
   end
 
   -- Load save state - if one exists
-  if saveState != "" then
-    local decodedSaveState = JSON.decode(saveState)
+  local decodedSaveState = JSON.decode(saveState)
+  if decodedSaveState != nil and decodedSaveState.version == version and decodedSaveState.gameState then
+    -- Load the previous settings and update the view
+    settings = decodedSaveState.settings
+    tableObject.call("updateSettings")
 
-    -- TODO:
-      -- currently selected decks
-      -- table ui elements
-
-    if decodedSaveState.version == version and decodedSaveState.gameState.status != -2 then
+    if decodedSaveState.gameState.status != -2 then
       -- Return players to their original seats if loading a very recent save
       if decodedSaveState.gameState.status == 1 and os.time() - decodedSaveState.time < 60 then
         tableObject.call("assignSeats",decodedSaveState.seating)
       end
+
       -- Load the previous gameState
       gameState = decodedSaveState.gameState
-
-      -- Load the previous settings and update the view
-      settings = decodedSaveState.settings
-      tableObject.call("updateSettings")
 
       -- Load the analytics data
       analytics = decodedSaveState.analytics
@@ -517,25 +510,29 @@ function onLoad(saveState)
       dealCards()
 
       -- Load decks and their selections
-      deck.selected = decodedSaveState.deck_selected
-      deck.multiple = decodedSaveState.deck_multiple
-
-      for i = 1, 20, 1 do
-        local buttonName = "deck" .. i .. "Button"
-        local test_string = tableObject.UI.getAttribute(buttonName, "onClick")
-        for deckIndex, deckGUID in ipairs(deck.selected) do
-          if test_string == "setDeck(" .. deckGUID .. ")" then
-            tableObject.UI.setAttribute(buttonName, "color", "#96e592")
-            break
-          end
-        end
-      end
+      deck = decodedSaveState.deck
 
       if getMultipleDeckMode() then
         tableObject.UI.setAttribute("deckModeSwitch", "color", "#96e592")
       else
         tableObject.UI.setAttribute("deckModeSwitch", "color", "#ffffff")
       end
+      tableObject.UI.setAttribute("deckSearch", "text", deck.searchTerm)
+
+      -- Fudge the deck list to pretend like we have the full list of decks while the real one loads
+      local ind = 1
+      for i = 1, deck.matchingDecks do
+        local dummy_entry = {deckID=deck.currentDeckList[1].deckID,language=deck.currentDeckList[1].language,name=deck.searchTerm or "", author={}}
+        if ind <= #deck.currentDeckList and i >= (deck.pageNum - 1) * deck.pageSize + 1 and i <= deck.pageNum * deck.pageSize then
+          dummy_entry = deck.currentDeckList[ind]
+          ind = ind + 1
+        end
+        table.insert(deckHandler.entireDeckList,dummy_entry)
+      end
+      refreshDeckElements()
+      -- wait 5 seconds to refresh the deck list to prevent multiple large requests when rewinding
+      deckHandler.fetchingDecks = true
+      Wait.time(api_getDecks, 5, 1)
 
       -- Load Turn Indicators
       local currentTurn = (gameState.turnTracker == 0 and "red" or "blue") .. "Turn"
@@ -561,6 +558,10 @@ function onLoad(saveState)
         end
       end
     end
+  end
+  if not deckHandler.fetchingDecks then
+    -- Get the list of decks
+    api_getDecks()
   end
 
   for _, player in ipairs(Player.getPlayers()) do
@@ -592,8 +593,7 @@ function onSave()
   saveData.analytics  = analytics
   saveData.cards      = cards
   saveData.agents     = agents
-  saveData.deck_selected       = deck.selected
-  saveData.deck_multiple       = deck.multiple
+  saveData.deck       = deck
 
   saveData.time       = os.time()
   saveData.seating    = {}
@@ -861,7 +861,7 @@ function refreshDeckElements()
 end
 
 function previousPage()
-  if (deck.pageNum <= 1) or deck.fetchingDecks then
+  if (deck.pageNum <= 1) then
     return
   end
 
@@ -870,7 +870,7 @@ function previousPage()
 end
 
 function nextPage()
-  if (deck.pageNum >= math.ceil(deck.matchingDecks / deck.pageSize)) or deck.fetchingDecks then
+  if (deck.pageNum >= math.ceil(deck.matchingDecks / deck.pageSize)) then
     return
   end
 
@@ -886,11 +886,16 @@ function searchDecks(searchTerm)
     deck.searchDelay = nil
   end
 
-  deck.searchDelay = Wait.time(function()
+  local tm = os.time()
+  deck.searchDelay = Wait.condition(function()
     deck.pageNum = 1
     refreshDeckElements()
     deck.searchDelay = nil
-  end, 0.5)
+      end,
+      function()
+        return os.time() - tm > 0.5 and not deckHandler.fetchingDecks
+      end,
+      10, function() end)
 end
 
 function clueEntered(player, value)
