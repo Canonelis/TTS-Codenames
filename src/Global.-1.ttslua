@@ -11,6 +11,7 @@
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
+  GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with this program. If not, see <http://www.gnu.org/licenses/>.
@@ -472,18 +473,9 @@ function onLoad(saveState)
     end
   end
 
-  -- Change seated players views
-  seatedPlayers = Player.getPlayers()
-  for _, player in ipairs(seatedPlayers) do
+  -- Display disclaimer
+  for _, player in ipairs(Player.getPlayers()) do
     player.print(chatDisclaimer, {1, 1, 1})
-    Wait.frames(function()
-      player.lookAt({
-        position = {0, 0, 0},
-        pitch    = 60,
-        yaw      = 0,
-        distance = 45
-      })
-    end, 1)
   end
 
   -- Load save state - if one exists
@@ -1267,16 +1259,6 @@ function onPlayerDisconnect(player)
 end
 
 function onPlayerChangeColor(color)
-  -- Change the player's view
-  if color != "Grey" then
-    Player[color].lookAt({
-      position = {0, 0, 0},
-      pitch    = 60,
-      yaw      = 0,
-      distance = 45
-    })
-  end
-
   -- Reset the global xml if the player hasn't had it reloaded while they were in the room
   if (color == "Red" or color == "Blue") then
     local id = Player[color].steam_id
