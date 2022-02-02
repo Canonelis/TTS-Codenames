@@ -2466,7 +2466,7 @@
       "Name": "HandTrigger",
       "Transform": {
         "posX": -25.0,
-        "posY": 3.0,
+        "posY": 1.0,
         "posZ": 35.0,
         "rotX": 0.0,
         "rotY": 180.0,
@@ -2499,9 +2499,9 @@
       "HideWhenFaceDown": false,
       "Hands": false,
       "FogColor": "Brown",
-      "LuaScript": "",
+      "LuaScript": "function onLoad(_)\r\n\tonPlayerChangeColor(\"Brown\")\r\nend\r\nfunction onPlayerChangeColor(color)\r\n\tif color == \"Brown\" and Player[\"Brown\"].steam_id != nil then\r\n\t\tself.UI.setAttribute(\"brownname\",\"text\",Player[\"Brown\"].steam_name)\r\n\telseif Player[\"Brown\"].steam_id == nil then\r\n\t\tself.UI.setAttribute(\"brownname\",\"text\",\"\")\r\n\tend\r\nend",
       "LuaScriptState": "",
-      "XmlUI": ""
+      "XmlUI": "<Text id=\"brownname\" position=\"0 0 -35\" fontSize =\"220\" rotation=\"0 0 180\" color=\"#A74E13\"></Text>"
     },
     {
       "GUID": "7f25d1",
