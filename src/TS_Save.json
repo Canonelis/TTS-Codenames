@@ -2876,10 +2876,10 @@
       "HideWhenFaceDown": false,
       "Hands": false,
       "CustomMesh": {
-        "MeshURL": "https://cdn.tts-codenames.com/table.obj",
-        "DiffuseURL": "https://cdn.tts-codenames.com/table_dark.png",
+        "MeshURL": "http://cloud-3.steamusercontent.com/ugc/1851543248352151702/F079142CADF38E2FF6E718A5A9B1A8815F815765/",
+        "DiffuseURL": "http://cloud-3.steamusercontent.com/ugc/1836908180962011636/2DDDCD7702A8BC0ED23AEBF87C65443491364BD1/",
         "NormalURL": "",
-        "ColliderURL": "https://cdn.tts-codenames.com/table.obj",
+        "ColliderURL": "http://cloud-3.steamusercontent.com/ugc/1851543248352151702/F079142CADF38E2FF6E718A5A9B1A8815F815765/",
         "Convex": false,
         "MaterialIndex": 3,
         "TypeIndex": 4,
