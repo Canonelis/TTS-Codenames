@@ -11,7 +11,6 @@
   but WITHOUT ANY WARRANTY; without even the implied warranty of
   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
   GNU General Public License for more details.
-  GNU General Public License for more details.
 
   You should have received a copy of the GNU General Public License
   along with this program. If not, see <http://www.gnu.org/licenses/>.
@@ -237,6 +236,33 @@ analytics =
   sessions  = {}
 }
 
+----------[ AFK loop checking ]----------
+afk =
+{
+  -- Wait id of the afk loop
+  waitId = nil,
+
+  -- To detect a VR player, getPointerRotation() never ever changes(except with "lookAt"). If a player's rotation changes several times the we know they are not in VR.
+  personInfo =
+  { -- [steamId]:
+    -- isNonVrPlayer = false,
+    -- currentPointerRotation = 0,
+    -- cprChanged = false,
+    -- uniquePointerRotations = {},
+    -- uniquePointerRotationsCount = 0
+  },
+
+  -- The number of uniquePointerRotationsCount needed to assert non-VR status
+  nonVrThreshold = 6,
+
+  -- For non-VR users, track their cursor position
+  movementInfo =
+  { -- [steam_id]:
+    -- timestamp = nil,
+    -- cursorPosition = nil,
+    -- countdown = nil
+  }
+}
 ----------[ Variables to manage the complex deck requests ]-----------
 function resetDeckHandler()
   deckHandler =
@@ -393,34 +419,7 @@ function printTable(t,return_as_string,table_id_list)
 	end
 end
 
-----------[ AFK loop checking ]----------
-afk =
-{
-  -- Wait id of the afk loop
-  waitId = nil,
 
-  -- To detect a VR player, getPointerRotation() never ever changes(except with "lookAt"). If a player's rotation changes several times the we know they are not in VR.
-  personInfo =
-  { -- [steamId]:
-    -- isNonVrPlayer = false,
-    -- currentPointerRotation = 0,
-    -- cprChanged = false,
-    -- uniquePointerRotations = {},
-    -- uniquePointerRotationsCount = 0
-  },
-
-  -- The number of uniquePointerRotationsCount needed to assert non-VR status
-  nonVrThreshold = 6,
-
-  -- For non-VR users, track their cursor position
-  colorInfo =
-  { -- [color]:
-    -- steamId = nil,
-    -- timestamp = nil,
-    -- cursorPosition = nil,
-    -- countdown = nil
-  }
-}
 function onLoad(saveState)
 
   -- Codenames script version
@@ -480,7 +479,7 @@ function onLoad(saveState)
 
   -- Load save state - if one exists
   local decodedSaveState = JSON.decode(saveState)
-  if decodedSaveState != nil and decodedSaveState.version == version and decodedSaveState.gameState then
+  if decodedSaveState != nil and decodedSaveState.version == version and decodedSaveState.gameState != -2 then
     -- Load the previous settings and update the view
     settings = decodedSaveState.settings
     tableObject.call("updateSettings")
