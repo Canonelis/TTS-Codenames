@@ -598,8 +598,7 @@ function refreshDecks(player, button)
     return
   end
 
-  Global.call("api_getDecks", player)
-  player.broadcast("[a020f0]» [ffffff]Deck list refreshed! [a020f0]«", redColor)
+  Global.call("downloadDecks")
 end
 
 function deckMode(player, button)
