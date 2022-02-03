@@ -642,7 +642,7 @@ function setAfk(enabled)
     settings.afkDetection.waitId = nil
   end
   if settings.afkDetection.enabled then
-    afk.colorInfo = {}
+    afk.movementInfo = {}
     settings.afkDetection.waitId = Wait.time(afkCheckLoop, 1, -1)
   end
 end
@@ -669,7 +669,7 @@ end
 function getTimerUsed() return settings.timer.enabled end
 
 function setAfkTime(value)
-  afk.colorInfo = {}
+  afk.movementInfo = {}
   settings.afkDetection.threshold = value
 end
 function getAfkTime() return settings.afkDetection.threshold end
@@ -697,7 +697,6 @@ function afkCheckLoop()
         if movementInfo == nil then
           -- They are new so set their data and skip them
           afk.movementInfo[player.steam_id] = {
-            color = player.color,
             timestamp = Time.time,
             cursorPosition = player.getPointerPosition() or Vector(0, 0, 0),
             countdown = nil
@@ -707,17 +706,6 @@ function afkCheckLoop()
 
         if player.color ~= "Grey" and player.color ~= "Black" and player.color ~= "Red" and player.color ~= "Blue" and not player.blindfolded then
           -- Only if the player is seated as a guesser
-          local colorInfo = afk.colorInfo[player.color]
-          if colorInfo == nil or colorInfo.steamId != player.steam_id then
-            -- This is a new player so reset data and skip them
-            afk.colorInfo[player.color] = {
-              steamId = player.steam_id,
-              timestamp = Time.time,
-              cursorPosition = player.getPointerPosition(),
-              countdown = nil
-             }
-            break
-          end
           local pos = player.getPointerPosition()
           if pos != nil then
             local max_delta = 0
@@ -750,12 +738,12 @@ function afkCheckLoop()
             end
           end
         else
-          -- If the player is immune to greying, then update their info
+          -- If the player is immune to greying, then pretend like they moved their pointer
           movementInfo.timestamp = Time.time
           movementInfo.cursorPosition = Vector(0, 0, 0)
           movementInfo.countdown = nil
         end
-      else
+      elseif player.color ~= "Grey" then
         -- Add pointer rotation to the list for the player
         local personInfo = afk.personInfo[player.steam_id]
         if personInfo == nil then
