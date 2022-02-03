@@ -481,7 +481,7 @@ function onLoad(saveState)
 
   -- Load save state - if one exists
   local decodedSaveState = JSON.decode(saveState)
-  if decodedSaveState != nil and decodedSaveState.version == version and decodedSaveState.gameState != -2 then
+  if decodedSaveState != nil and decodedSaveState.version == version then
     -- Load the previous settings and update the view
     settings = decodedSaveState.settings
     tableObject.call("updateSettings")
@@ -551,6 +551,9 @@ function onLoad(saveState)
         end
       end
     end
+  else
+    -- Load current settings as default
+    tableObject.call("updateSettings")
   end
   if not deckHandler.fetchingDecks then
     -- Get the list of decks
