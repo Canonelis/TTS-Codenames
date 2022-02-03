@@ -165,7 +165,7 @@ settings =
   cardTilting = false,
 
   -- Allow multiple votes per player
-  multivoting = false,
+  multivoting = true,
 
   -- Show shooting star background
   starBackground = true,
