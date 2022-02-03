@@ -420,7 +420,7 @@ afk =
     -- countdown = nil
   }
 }
-function onload(saveState)
+function onLoad(saveState)
 
   -- Codenames script version
   version = "3.2.3"
@@ -516,6 +516,35 @@ function onload(saveState)
       cards = decodedSaveState.cards
       dealCards()
 
+      -- Load decks and their selections
+      deck.selected = decodedSaveState.deck_selected
+      deck.multiple = decodedSaveState.deck_multiple
+
+      for i = 1, 20, 1 do
+        local buttonName = "deck" .. i .. "Button"
+        local test_string = tableObject.UI.getAttribute(buttonName, "onClick")
+        for deckIndex, deckGUID in ipairs(deck.selected) do
+          if test_string == "setDeck(" .. deckGUID .. ")" then
+            tableObject.UI.setAttribute(buttonName, "color", "#96e592")
+            break
+          end
+        end
+      end
+
+      if getMultipleDeckMode() then
+        tableObject.UI.setAttribute("deckModeSwitch", "color", "#96e592")
+      else
+        tableObject.UI.setAttribute("deckModeSwitch", "color", "#ffffff")
+      end
+
+      -- Load Turn Indicators
+      local currentTurn = (gameState.turnTracker == 0 and "red" or "blue") .. "Turn"
+      local teamColorTurn = gameState.turnTracker == 0 and "Red" or "Blue"
+      tableObject.UI.setAttribute(currentTurn, "active", true)
+      tableObject.UI.setAttribute(currentTurn .. "BG", "active", true)
+      tableObject.UI.setAttribute(currentTurn .. "Square", "active", true)
+      tableObject.UI.setAttribute("timer", "outline", teamColorTurn)
+
       -- Update the enabled property for agents
       agents = decodedSaveState.agents
 
@@ -563,6 +592,8 @@ function onSave()
   saveData.analytics  = analytics
   saveData.cards      = cards
   saveData.agents     = agents
+  saveData.deck_selected       = deck.selected
+  saveData.deck_multiple       = deck.multiple
 
   saveData.time       = os.time()
   saveData.seating    = {}
