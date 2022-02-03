@@ -438,6 +438,7 @@ function onLoad(saveState)
   blueToken       = getObjectFromGUID("3f75b3")
   buttonRed       = getObjectFromGUID("f16a9a")
   buttonBlue      = getObjectFromGUID("c91f34")
+  shootingStars   = getObjectFromGUID("8430cf")
 
   ----------[ Interactable objects ]----------
   -- Control panels and table objects
@@ -450,6 +451,7 @@ function onLoad(saveState)
   extraRed.interactable       = false
   redToken.interactable       = false
   blueToken.interactable      = false
+  shootingStars.interactable  = false
 
   -- Create variable for storing typed clues
   currentEnteredClue = {}
