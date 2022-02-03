@@ -614,7 +614,26 @@ function getSwitcher() return settings.colorSwitcher end
 function setTilting(enabled) settings.cardTilting = enabled end
 function getTilting() return settings.cardTilting end
 
-function setMultivoting(enabled) settings.multivoting = enabled end
+function setMultivoting(enabled)
+  settings.multivoting = enabled
+  -- Put or remove multivoting message on the table
+  if enabled then
+    local text = spawnObject({
+     position = {x=0, y=0.961133063, z=-4.9},
+     rotation = {90.0,0,0.0},
+     type = "3DText"
+    })
+    text.TextTool.setValue("MULTIVOTING ENABLED")
+    text.TextTool.setFontColor("Orange")
+    text.TextTool.setFontSize(80)
+  else
+    for _, o in pairs(getObjects()) do
+      if o.type ==  "3D Text" and o.TextTool.getValue() == "MULTIVOTING ENABLED" then
+        o.destruct()
+      end
+    end
+  end
+end
 function getMultivoting() return settings.multivoting end
 
 function setAfk(enabled)
@@ -628,8 +647,15 @@ function setAfk(enabled)
     settings.afkDetection.waitId = Wait.time(afkCheckLoop, 1, -1)
   end
 end
+function getAfk() return settings.afkDetection.enabled end
 
-function setTimer(enabled)
+function setAfkTime(value)
+  afk.movementInfo = {}
+  settings.afkDetection.threshold = value
+end
+function getAfkTime() return settings.afkDetection.threshold end
+
+function setTimerUsed(enabled)
   settings.timer.enabled = enabled
   if settings.timer.enabled then
     if gameState.status == 1 then
@@ -641,7 +667,7 @@ function setTimer(enabled)
     -- Disable the timer
   end
 end
-function getAfk() return settings.afkDetection.enabled end
+function getTimerUsed() return settings.timer.enabled end
 
 function setAfkTime(value)
   afk.colorInfo = {}

@@ -194,10 +194,10 @@ function updateSettings()
   queues(nil,      Global.call("getQueue") == true and "True" or "False")
   switcher(nil,    Global.call("getSwitcher") == true and "True" or "False")
   tilting(nil,     Global.call("getTilting") == true and "True" or "False")
-  multivoting(nil, Global.call("getMultivoting") == true and "True" or "False")
-  afk(nil,         Global.call("getAfk"))
+  afk(nil,         Global.call("getAfk") == true and "True" or "False")
   afkTime(nil,     Global.call("getAfkTime"))
-  timer(nil,       Global.call("getTimer") == true and "True" or "False")
+  multivoting(nil, Global.call("getMultivoting") == true and "True" or "False")
+  timerUsed(nil,   Global.call("getTimerUsed") == true and "True" or "False")
   timer1Time(nil,  Global.call("getTimer1Time"))
   timer2Time(nil,  Global.call("getTimer2Time"))
   autokick(nil,    Global.call("getAutokick") == true and "True" or "False")
@@ -440,25 +440,6 @@ function multivoting(player, enabled)
 
   -- Update the view for everyone
   self.UI.setAttribute("multivoting", "isOn", toboolean(enabled))
-
-  -- Put or remove multivoting message on the table
-  if toboolean(enabled) then
-    local text = spawnObject({
-     position = {x=0, y=0.961133063, z=-4.9},
-     rotation = {90.0,0,0.0},
-     type = "3DText"
-    })
-    text.TextTool.setValue("MULTIVOTING ENABLED")
-    text.TextTool.setFontColor("Orange")
-    text.TextTool.setFontSize(80)
-  else
-    for _, o in pairs(getObjects()) do
-      if o.type ==  "3D Text" and o.TextTool.getValue() == "MULTIVOTING ENABLED" then
-        o.destruct()
-      end
-    end
-  end
-
 end
 
 function afk(player, enabled)
@@ -490,18 +471,18 @@ function afkTime(player, value)
   self.UI.setAttribute("afkTimeValue", "text", value)
 end
 
-function timer(player, enabled)
+function timerUsed(player, enabled)
   if player ~= nil and not player.admin then
-    self.UI.setAttribute("timer", "isOn", self.UI.getAttribute("timer", "isOn"))
+    self.UI.setAttribute("timerUsed", "isOn", self.UI.getAttribute("timerUsed", "isOn"))
     player.broadcast("[a020f0]» [da1918]ERROR: [ffffff]Only promoted players may change game settings! [a020f0]«")
     return
   end
 
   -- Handle in the Global script
-  Global.call("setTimer", toboolean(enabled))
+  Global.call("setTimerUsed", toboolean(enabled))
 
   -- Update the view for everyone
-  self.UI.setAttribute("timer", "isOn", toboolean(enabled))
+  self.UI.setAttribute("timerUsed", "isOn", toboolean(enabled))
 end
 
 function timer1Time(player, value)

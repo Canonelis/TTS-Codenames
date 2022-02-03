@@ -916,7 +916,7 @@
 
         <Row class="settingRow">
           <Cell><Text class="settingText">Timer Enabled</Text></Cell>
-          <Cell><Toggle id="timer" class="settingToggle" isOn="true" onValueChanged="timer()"></Toggle></Cell>
+          <Cell><Toggle id="timerUsed" class="settingToggle" isOn="true" onValueChanged="timerUsed()"></Toggle></Cell>
         </Row>
 
         <Row class="settingRow">
