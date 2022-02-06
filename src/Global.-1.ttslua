@@ -487,9 +487,12 @@ function onLoad(saveState)
     tableObject.call("updateSettings")
 
     if decodedSaveState.gameState.status != -2 then
-      -- Return players to their original seats if loading a very recent save
-      if decodedSaveState.gameState.status == 1 and os.time() - decodedSaveState.time < 60 then
-        tableObject.call("assignSeats",decodedSaveState.seating)
+      if decodedSaveState.gameState.status == 1 then
+        -- Return players to their original seats if loading a very recent save
+        if os.time() - decodedSaveState.time < 60 then
+          tableObject.call("assignSeats",decodedSaveState.seating)
+        end
+        startTime()
       end
 
       -- Load the previous gameState
@@ -669,6 +672,7 @@ function setTimerUsed(enabled)
     end
   else
     -- Disable the timer
+    tableObject.call("stopTimer", true)
   end
 end
 function getTimerUsed() return settings.timer.enabled end
