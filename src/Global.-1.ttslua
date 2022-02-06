@@ -697,6 +697,16 @@ function getAutokick() return settings.automod.autokick end
 function toggleDeckMode() deck.multiple = not deck.multiple end
 function getMultipleDeckMode() return deck.multiple end
 
+function setShootingStarsUsed(enabled)
+  settings.starBackground = enabled
+  if settings.starBackground then
+    shootingStars.AssetBundle.playLoopingEffect(enabled and 0 or 1)
+  else
+    shootingStars.AssetBundle.playLoopingEffect(enabled and 0 or 1)
+  end
+end
+function getShootingStarsUsed() return settings.starBackground end
+
 function afkCheckLoop()
   if settings.afkDetection.enabled then
     for _, player in pairs(Player.getPlayers()) do

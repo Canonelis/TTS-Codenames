@@ -952,6 +952,15 @@
         </Row>
 
         <Row class="subcategoryRow">
+          <Text class="subcategoryText">Appearance Settings</Text>
+        </Row>
+
+        <Row class="settingRow">
+          <Cell><Text class="settingText">Have Shooting Stars</Text></Cell>
+          <Cell><Toggle id="shootingStarsUsed" class="settingToggle" isOn="true" onValueChanged="shootingStarsUsed()"></Toggle></Cell>
+        </Row>
+
+        <Row class="subcategoryRow">
           <Text class="subcategoryText">Automod Settings</Text>
         </Row>
 

@@ -201,6 +201,7 @@ function updateSettings()
   timer1Time(nil,  Global.call("getTimer1Time"))
   timer2Time(nil,  Global.call("getTimer2Time"))
   autokick(nil,    Global.call("getAutokick") == true and "True" or "False")
+  shootingStarsUsed(nil,   Global.call("getShootingStarsUsed") == true and "True" or "False")
 end
 
 function reloadUI(player)
@@ -529,6 +530,19 @@ function autokick(player, enabled)
   self.UI.setAttribute("autokick", "isOn", toboolean(enabled))
 end
 
+function shootingStarsUsed(player, enabled)
+  if player ~= nil and not player.admin then
+    self.UI.setAttribute("shootingStarsUsed", "isOn", self.UI.getAttribute("shootingStarsUsed", "isOn"))
+    player.broadcast("[a020f0]» [da1918]ERROR: [ffffff]Only promoted players may change game settings! [a020f0]«")
+    return
+  end
+
+  -- Handle in the Global script
+  Global.call("setShootingStarsUsed", toboolean(enabled))
+
+  -- Update the view for everyone
+  self.UI.setAttribute("shootingStarsUsed", "isOn", toboolean(enabled))
+end
 
 ---------------------------------------------------------------
 --------------------[ DECK SELECTOR PANEL ]--------------------
