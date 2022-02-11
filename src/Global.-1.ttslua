@@ -1476,8 +1476,8 @@ function resetGame()
       local isExtraCard = (agentObject.guid == extraBlue.guid) or (agentObject.guid == extraRed.guid)
       agentObject.interactable = not isExtraCard
       agentObject.setLock(isExtraCard)
-      agentObject.setPositionSmooth(isExtraCard and {0, -2, -14} or agentData.position)
-      agentObject.setRotationSmooth({0, 180, 180})
+      agentObject.setPositionSmooth(isExtraCard and {0, -2, -14} or agentData.position, false, true)
+      agentObject.setRotationSmooth({0, 180, 180}, false, true)
       agents[agentObject.guid].enabled = not isExtraCard
       agents[agentObject.guid].covering = nil
     end
@@ -1530,7 +1530,7 @@ function setupGame()
   -- Set the correct double card to red
   extraCard.setLock(false)
   extraCard.setRotation({0, 180, 180})
-  extraCard.setPositionSmooth(agents[extraCard.guid].position)
+  extraCard.setPositionSmooth(agents[extraCard.guid].position, false, true)
   extraCard.interactable = true
   agents[extraCard.guid].enabled = true
 
@@ -1644,7 +1644,7 @@ function onObjectDrop(color, agent)
     agent.setAngularVelocity({0, 0, 0})
     agent.setVelocity({0, 0, 0})
     agent.setRotation({0, 180, 180})
-    agent.setPositionSmooth(agents[agent.guid].position)
+    agent.setPositionSmooth(agents[agent.guid].position, false, true)
     return
   end
 
@@ -1655,7 +1655,7 @@ function onObjectDrop(color, agent)
     agent.setAngularVelocity({0, 0, 0})
     agent.setVelocity({0, 0, 0})
     agent.setRotation({0, 180, 180})
-    agent.setPositionSmooth(agents[agent.guid].position)
+    agent.setPositionSmooth(agents[agent.guid].position, false, true)
     Player[color].broadcast("[a020f0]» [da1918]ERROR: [ffffff]An agent has been placed incorrectly. You placed a " .. agentColor .. " agent on a " .. cardColor .. " card. [a020f0]«")
     return
   end
@@ -1926,11 +1926,11 @@ function coverCard(cardIndex, agentGUID)
       agentObject.setLock(true)
 
       -- Ensure the tile is on the code
-      cardObject.setRotationSmooth({0, 180, 0})
-      agentObject.setRotationSmooth({0, 180, 180})
+      cardObject.setRotationSmooth({0, 180, 0}, false, true)
+      agentObject.setRotationSmooth({0, 180, 180}, false, true)
 
-      cardObject.setPositionSmooth(position)
-      agentObject.setPositionSmooth(position)
+      cardObject.setPositionSmooth(position, false, true)
+      agentObject.setPositionSmooth(position, false, true)
 
       break
     end
@@ -2252,7 +2252,7 @@ function toggleTurns()
       if settings.cardTilting then
         cardObject.setLock(true)
       end
-      cardObject.setRotationSmooth({0, 180, 0})
+      cardObject.setRotationSmooth({0, 180, 0}, false, true)
     end
   end
 
