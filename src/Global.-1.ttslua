@@ -821,9 +821,9 @@ function refreshDeckElements()
 
   for i = 1, #deckHandler.entireDeckList do
     if deck.searchTerm == nil or deck.searchTerm == "" or #deck.searchTerm > 100
-        or deckHandler.entireDeckList[i]["author"] and deckHandler.entireDeckList[i]["author"]["displayName"] and string.find(deckHandler.entireDeckList[i]["author"]["displayName"], deck.searchTerm, 1, true)
-        or deckHandler.entireDeckList[i]["name"] and string.find(deckHandler.entireDeckList[i]["name"], deck.searchTerm, 1, true)
-        or deckHandler.entireDeckList[i]["description"] and string.find(deckHandler.entireDeckList[i]["description"], deck.searchTerm, 1, true)
+        or deckHandler.entireDeckList[i]["author"] and deckHandler.entireDeckList[i]["author"]["displayName"] and string.find(string.lower(deckHandler.entireDeckList[i]["author"]["displayName"]), string.lower(deck.searchTerm), 1, true)
+        or deckHandler.entireDeckList[i]["name"] and string.find(string.lower(deckHandler.entireDeckList[i]["name"]), string.lower(deck.searchTerm), 1, true)
+        or deckHandler.entireDeckList[i]["description"] and string.find(string.lower(deckHandler.entireDeckList[i]["description"]), string.lower(deck.searchTerm), 1, true)
       then
 
       -- When the count of the deck is in the correct range, add it to the list of decks to display
