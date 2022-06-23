@@ -223,7 +223,11 @@ deck =
   pageNum = 1,
 
   -- Used to save the current deck page since saving the entire list is much too big
-  currentDeckList = {}
+  currentDeckList = {},
+
+  -- For saving the list of used words when playing offline
+  offlineUsedWords = {},
+
 }
 
 ----------[ Game analytics ]----------
@@ -233,7 +237,9 @@ analytics =
   gameID    = nil,
   host      = nil,
   clueID    = nil,
-  sessions  = {}
+  sessions  = {},
+  offlineMode = false,
+  offlineDeckList = {status="success",decks={totalDecks=1,deckList={{deckID="offline hanni's deck",name="Hanii's Codenames",description="An extension of the vanilla deck using the same philosophy, using nouns with very broad connotations or multiple different connotations.",language="34e8cb3f-bca1-488d-ad7c-063402191f0",author={}}}}},
 }
 
 ----------[ AFK loop checking ]----------
@@ -1426,6 +1432,11 @@ end
 
 -- Restrict newGame permissions to Red/Blue/Promoted/Host
 function startGame(player)
+  -- Check whether the server is back online
+  if analytics.offlineMode then
+    downloadDecks()
+  end
+
   -- Check to see whether a new game is currently being set up
   if gameState.status == 0 then
     player.broadcast("[a020f0]» [da1918]ERROR: [ffffff]A new game is already starting. Please wait. [a020f0]«")
@@ -2322,7 +2333,7 @@ function apiPost(api, payload, callback)
 end
 
 function getJSON(responseRaw)
-  if not responseRaw.is_done or responseRaw.is_error or responseRaw.text == "" then
+  if not responseRaw.is_done or responseRaw.is_error or responseRaw.text == "" or responseRaw.response_code != 200 then
     return nil
   end
 
@@ -2351,7 +2362,19 @@ end
 function api_getDecksCB(responseRaw)
   local response = getJSON(responseRaw)
   if response == nil then
-    return
+    if not analytics.offlineMode then
+      broadcastToAll("[da1918]The codenames server could not be contacted. Offline Hanni's deck will be available.")
+    else
+      printToAll("[da1918]The codenames server is still offline.")
+    end
+    analytics.offlineMode = true
+    response = analytics.offlineDeckList
+    deckHandler.entireDeckList = {}
+  else
+    if analytics.offlineMode then
+      broadcastToAll("[19da18]The codenames server is back online. ")
+    end
+    analytics.offlineMode = false
   end
 
   deckHandler.totalDecks = tonumber(response["decks"]["totalDecks"])
@@ -2374,9 +2397,14 @@ function api_getDecksCB(responseRaw)
 end
 
 function api_getDeckSubsetCB(responseRaw)
-  local response = getJSON(responseRaw)
-  if response == nil then
-    return
+  local response = nil
+  if analytics.offlineMode then
+    response = analytics.offlineDeckList
+  else
+    response = getJSON(responseRaw)
+    if response == nil then
+      return
+    end
   end
 
   -- Get the page number for this request from the URL
@@ -2458,6 +2486,9 @@ end
 
 -------------- /games/player/blacklisted/:steamID --------------
 function api_getBlacklistInfo(steamID)
+  if analytics.offlineMode then
+    return
+  end
   apiGet("/games/player/blacklisted/" .. steamID, api_getBlacklistInfoCB)
 end
 
@@ -2483,6 +2514,31 @@ end
 
 -------------- /games/start --------------
 function api_gameStart()
+  if analytics.offlineMode then
+    deck.words = {}
+    while #deck.words < 25 do
+      if #offlineUnusedWords == 0 then
+        for i, k in pairs(offlineDeck) do
+          offlineUnusedWords[i] = k
+        end
+        deck.offlineUsedWords = {}
+        for i, k in pairs(deck.words) do
+          deck.offlineUsedWords[k] = true
+        end
+      end
+      i = math.random(#offlineUnusedWords)
+      if deck.offlineUsedWords[offlineUnusedWords[i]] == nil then
+        deck.offlineUsedWords[offlineUnusedWords[i]] = true
+        table.insert(deck.words, {word=offlineUnusedWords[i]})
+      end
+      offlineUnusedWords[i] = offlineUnusedWords[#offlineUnusedWords]
+      offlineUnusedWords[#offlineUnusedWords] = nil
+    end
+
+    setupGame()
+    return
+  end
+
   local request =
   {
     host    = analytics.host,
@@ -2512,6 +2568,8 @@ end
 function api_gameStartCB(responseRaw)
   local response = getJSON(responseRaw)
   if response == nil then
+    downloadDecks()
+    gameState.status = -1
     return
   end
 
@@ -2536,6 +2594,10 @@ end
 
 -------------- /games/end --------------
 function api_gameEnd(winner)
+  if analytics.offlineMode then
+    return
+  end
+
   local request =
   {
     gameID  = analytics.gameID,
@@ -2563,6 +2625,10 @@ end
 
 -------------- /games/clues/new --------------
 function api_newClue(clue, number, codemaster)
+  if analytics.offlineMode then
+    return
+  end
+
   local request =
   {
     gameID      = analytics.gameID,
@@ -2586,6 +2652,10 @@ end
 
 -------------- /games/clues/guess --------------
 function api_clueGuess(players, guess, correct, color)
+  if analytics.offlineMode then
+    return
+  end
+
   local request =
   {
     clueID  = analytics.clueID,
@@ -2607,6 +2677,10 @@ end
 
 -------------- /games/players/sessions/start --------------
 function api_playerSessionStart(player)
+  if analytics.offlineMode then
+    return
+  end
+
   local request =
   {
     gameID  = analytics.gameID,
@@ -2628,6 +2702,10 @@ end
 
 -------------- /games/players/sessions/end --------------
 function api_playerSessionEnd(sessionID)
+  if analytics.offlineMode then
+    return
+  end
+
   local request =
   {
     sessionID = sessionID
@@ -2707,3 +2785,7 @@ globalXmlText = [[<Panel id="redClues"
        </InputField>
 
 </Panel>]]
+
+----------[ Offline Mode ]----------
+offlineDeck = {"ABORIGINE","ABSYNTHE","ACID","ACORN","ACTOR","ADMIRAL","AERIAL","AFRICA","AFRO","AGENT","AIR","AK-47","ALCHEMIST","ALCOHOL","ALIEN","ALPS","AMAZON","AMBULANCE","AMERICA","ANGEL","ANIME","ANTARCTICA","APPENDIX","APPLE","ARABIA","ARCH","AREA","ARM","ARMOUR","ARROW","ASH","ASIA","ASSASSIN","ASTROLOGY","ASTRONAUT","ASTRONOMY","ATLANTIC","ATLANTIS","ATLAS","ATMOSPHERE","ATTIC","AUNTY","AUSTRALIA","AXE","AZTEC","BABY","BACK","BACON","BADGE","BADGER","BAKERY","BALL","BALLET","BALLOON","BALLOT","BANANA","BAND","BANK","BAR","BARB","BARBARIAN","BARBER","BARD","BARGE","BARK","BARON","BASEBALL","BASEMENT","BASKET","BASKETBALL","BASS","BAT","BATH","BATTERY","BATTLE","BEACH","BEAD","BEAK","BEAM","BEAN","BEAR","BEARD","BEAT","BEAVER","BED","BEE","BEEF","BEER","BEIJING","BELL","BELT","BENCH","BERLIN","BERRY","BIBLE","BIKE","BILL","BISCUIT","BISHOP","BLACK","BLADE","BLANKET","BLOCK","BLOOD","BLT","BLUE","BOAR","BOARD","BODY","BOLT","BOMB","BONE","BOOK","BOOM","BOOT","BOTTLE","BOW","BOWL","BOX","BOXER","BOY","BRACELET","BRAMBLE","BRANCH","BRANDY","BRASS","BRAZIL","BREAD","BREAKFAST","BREW","BRIDGE","BROADCAST","BRONZE","BROOM","BROTHER","BRUSH","BUBBLE","BUCK","BUCKET","BUFFALO","BUG","BUGLE","BUM","BUN","BUNK","BURN","BUS","BUSH","BUTLER","BUTTERFLY","BUTTON","C’THULHU","CABIN","CABLE","CACTUS","CAESAR","CAJUN","CALCIUM","CALCULATOR","CALENDAR","CALF","CALZONE","CAMERA","CAMP","CAN","CANADA","CANAL","CANARY","CANDLE","CANINE","CANNIBAL","CANNON","CANVAS","CAP","CAPE","CAPITAL","CAPTAIN","CAR","CARD","CARROT","CASH","CASINO","CASSETTE","CAST","CASTLE","CAT","CATAPULT","CATERPILLAR","CATTLE","CAVE","CELERY","CELL","CENTRE","CENTURION","CEREAL","CHAIN","CHAIR","CHAMBER","CHAMPAGNE","CHAMPION","CHANGE","CHANNEL","CHARGE","CHECK","CHEESE","CHEF","CHEMIST","CHEQUE","CHERRY","CHEST","CHICK","CHIEF","CHIMPANZEE","CHINA","CHIPS","CHISEL","CHOCOLATE","CHOP","CHURCH","CIGAR","CIGARETTE","CIRCLE","CITY","CLAN","CLAP","CLAW","CLIP","CLOAK","CLOUD","CLUB","COACH","COAL","COAST","CODE","COG","COIN","COKE","COLD","COLLAR","COLLIE","COLOSSEUM","COLOSSUS","COLUMBIA","COMB","COMIC","COMMAND","COMPOUND","CONCERT","CONE","CONSOLE","CONTRACT","CONTROL","CONTROLLER","COOK","COPPER","CORE","CORN","COTTAGE","COTTON","COUGAR","COUNTRY","COURT","COUSIN","COVER","CRACK","CRACKER","CRANE","CRASH","CREAM","CRICKET","CRIMINAL","CRISPS","CROCKERY","CROSS","CROW","CROWN","CRUSADER","CUCUMBER","CUE","CULT","CUSHION","CUSTARD","CUTLERY","CYCLE","DACHSHUND","DAM","DANCE","DANISH","DATE","DAUGHTER","DAY","DEATH","DECK","DEMON","DESERT","DESK","DESSERT","DEVIL","DIAMOND","DIARY","DICE","DINOSAUR","DISEASE","DISH","DOCK","DOCTOR","DOG","DOLL","DONKEY","DOOR","DOUGH","DOUGHNUT","DRAGON","DRESS","DRILL","DRIVE","DROP","DRYER","DUCK","DUST","DWARF","DYNASTY","EAGLE","EAR","EARRING","EARTH","EAST","EGG","EGYPT","ELECTION","ELEMENT","ELF","EMAIL","EMBASSY","EMERALD","EMPEROR","EMPRESS","EMU","ENCHANTMENT","END","ENGINE","ENGLAND","ENTERPRISE","EUROPE","EVEREST","EYE","FACE","FACTORY","FALL","FAN","FARM","FARMER","FATHER","FEAR","FEAST","FEATHER","FEDERATION","FENCE","FENDER","FESTIVAL","FIELD","FIGHTER","FIGURE","FILE","FILM","FIRE","FISH","FJORD","FLAG","FLAKE","FLAME","FLAMINGO","FLAP","FLARE","FLASH","FLASK","FLEA","FLIGHT","FLING","FLINT","FLINTLOCK","FLIPPER","FLOCK","FLOUR","FLOWER","FLUFF","FLUTE","FLY","FOAM","FOG","FOIL","FOLDER","FOOT","FOOTBALL","FORCE","FORECAST","FOREST","FORGE","FORK","FORM","FORMATION","FORT","FOSSIL","FRANCE","FRANCHISE","FRANKENSTEIN","FRIGATE","FRIGHT","FRISBEE","FUR","FUSE","GALLIUM","GAME","GARDEN","GAS","GATE","GEAR","GENERATOR","GENEVA","GENIE","GENIUS","GERMANY","GHOST","GHOUL","GIANT","GINGER","GIRAFFE","GIRL","GLASS","GLIDER","GLOVE","GNOME","GOLD","GOLF","GORILLA","GOVERNMENT","GRAIN","GRAPE","GRASS","GRATER","GRAVEYARD","GREECE","GREEN","GRIND","GROUND","GUESS","GUIDE","GUILD","GUITAR","GUM","GYM","HAGGIS","HAM","HAMLET","HAMMER","HAMMOCK","HAMSTER","HAND","HANDLE","HARE","HARMONICA","HAT","HAWK","HAY","HEAD","HEART","HEAVEN","HEDGEHOG","HEEL","HELICOPTER","HELIUM","HELL","HENGE","HERCULES","HERO","HILL","HIPPOPOTAMUS","HITMAN","HIVE","HOCKEY","HOLE","HOLIDAY","HOLLY","HOLLYWOOD","HOME","HONEY","HONEYDEW","HOOD","HOOK","HOOP","HOOVER","HORN","HORSE","HOSPITAL","HOT DOG","HOTEL","HOUSE","HUMP","HURRICANE","HYDROGEN","ICE","ICE-CREAM","IGNITE","IMAGE","INDIA","IRAQ","IRELAND","IRON","ISLAND","ISRAEL","ITALY","IVORY","JACKET","JAIL","JAM","JAMAICA","JAPAN","JAW","JAZZ","JELLY","JET","JOINT","JUICE","JUMP","JUPITER","JUSTICE","KANGAROO","KATANA","KENNEL","KETCHUP","KETTLE","KEY","KEYBOARD","KID","KING","KINGDOM","KISS","KITE","KITTEN","KIWI","KNIFE","KNIGHT","KOREA","KRYPTON","LAB","LADDER","LADY","LAKE","LAMB","LAMP","LANDSCAPE","LAP","LASER","LAUGH","LAVA","LAVENDER","LAWYER","LEAD","LEGION","LEMON","LENS","LETTER","LETTUCE","LICE","LID","LIFE","LIGER","LIGHT","LIGHTER","LIGHTNING","LILAC","LILY","LIMBO","LIME","LIMOUSINE","LINE","LINEN","LINK","LION","LIQUORICE","LITTER","LLAMA","LOCH","LOCK","LOFT","LOG","LONDON","LORD","LORRY","LUCK","LUNG","MACARONI","MACHINE","MAGMA","MAGNET","MAIL","MALLET","MAMMOTH","MAN","MANUAL","MAP","MAPLE","MARBLE","MARCH","MARKET","MARS","MARSHMALLOW","MASH","MASK","MASS","MAST","MATCH","MAYAN","MEAT","MEDIC","MEDITERRANEAN","MELON","MERCURY","MESSAGE","METRONOME","METROPOLIS","MEXICO","MICROSCOPE","MIDDLE","MILK","MILL","MILLIONAIRE","MIND","MINE","MINT","MISSILE","MISSIONARY","MITTEN","MIXTURE","MOB","MOD","MODEL","MOLE","MONKEY","MONOLITH","MONUMENT","MOON","MOP","MOSCOW","MOSQUITO","MOTH","MOTHER","MOTOR","MOTORWAY","MOUNT","MOUSE","MOUSTACHE","MOUTH","MOVIE","MOZZARELLA","MUG","MURDER","MUSCLE","MUSTARD","MUTTON","MYSTERY","NAIL","NAME","NARWHAL","NATION","NATURE","NECK","NECKLACE","NEEDLE","NEPTUNE","NET","NETTLE","NEW YORK","NICKEL","NIGHT","NILE","NINJA","NOBLE","NORTH","NOSE","NOTE","NOVEL","NUCLEAR","NURSE","NUT","NUTELLA","OAK","OCEAN","OCTOPUS","OIL","OLIVE","OLYMPUS","ONION","OPERA","ORANGE","ORC","ORE","ORGAN","ORGANIC","OVEN","PACIFIC","PADLOCK","PALM","PAN","PANDA","PANTHER","PANTS","PAPER","PARACHUTE","PARK","PARKA","PARLIAMENT","PARMESAN","PARROT","PART","PASS","PASTA","PASTE","PASTEL","PASTRY","PATCH","PEACH","PEACOCK","PEAK","PEARL","PEDAL","PEDESTAL","PEEL","PEN","PENGUIN","PENTAGON","PEPPER","PERCUSSION","PERSIA","PETAL","PETROL","PHOENIX","PHONE","PIANO","PICCOLO","PICTURE","PIE","PILE","PILLOW","PILOT","PIN","PINBALL","PINK","PIPE","PIRANHA","PIRATE","PISTOL","PIT","PITCH","PIZZA","PLANE","PLANK","PLASTIC","PLATE","PLATYPUS","PLAY","PLOT","PLUG","PLUNGER","POCKET","POINT","POISON","POLE","POLICE","POLO","PONY","POOL","POPCORN","PORK","PORT","PORTRAIT","POST","POT","POTION","POUND","POWDER","PRAYER","PRESIDENT","PRESS","PRIEST","PRINCE","PRINCESS","PROGRAM","PROTEST","PUB","PUMP","PUMPKIN","PUNCH","PUPIL","PUPPY","PURPLE","PYRAMID","QUARTZ","QUEBEC","QUEEN","RABBI","RABBIT","RACE","RACKET","RADIO","RAIL","RAIN","RAINBOW","RAISIN","RANGE","RAT","RAVEN","RAY","RAZOR","RECORD","RED","REGGAE","REGIMENT","REPUBLICAN","REVOLUTION","RHINO","RHUBARB","RICE","RIFLE","RING","RIOT","ROBE","ROBIN","ROBOT","ROCK","ROCKET","ROD","ROLL","ROME","ROOT","ROSE","ROUND","ROW","RUBBER","RUINS","RULER","RUM","RUNE","RUSSIA","RUST","SACRIFICE","SAHARA","SAIL","SAINT","SALMON","SALSA","SALT","SAMURAI","SAND","SAPPHIRE","SARDINE","SATELLITE","SATURN","SAUDI ARABIA","SAUSAGE","SAX","SCALE","SCALPEL","SCAM","SCENT","SCHOOL","SCIENTIST","SCISSORS","SCOOP","SCOPE","SCORPION","SCOTCH","SCOTLAND","SCREEN","SCREWDRIVER","SCRIPT","SCROLL","SCYTHE","SEA","SEAL","SECRET","SEED","SENATE","SERVER","SHACK","SHAFT","SHARK","SHARP","SHEEP","SHEET","SHELL","SHEPHERD","SHIP","SHOE","SHOP","SHOT","SHOTGUN","SHOWER","SHUTTLE","SICKLE","SIDE","SILK","SILVER","SINK","SISTER","SKIN","SKIRT","SKULL","SKUNK","SKY","SKYSCRAPER","SLASH","SLICE","SLING","SLIP","SLIPPER","SLUG","SLUSH","SMELL","SMOKE","SNAKE","SNIPER","SNOOKER","SNOW","SOAP","SOCK","SOCKET","SOLDIER","SON","SONAR","SOUL","SOUP","SOUTH","SPACE","SPADE","SPARK","SPEAKER","SPELL","SPIDER","SPIKE","SPINE","SPONGE","SPOT","SPRAY","SPRING","SPY","SQUAD","SQUARE","SQUASH","STADIUM","STAFF","STAKE","STAMP","STAPLE","STAPLER","STAR","START","STATE","STATUE","STEAK","STEAM","STEEL","STICK","STOCK","STOCKING","STOMACH","STOOL","STORM","STORY","STRAW","STREAK","STREAM","STREET","STRIKE","STRING","STUD","STUDENT","STUMP","SUB","SUGAR","SUIT","SULPHUR","SUMMER","SUN","SUPERHERO","SURPRISE","SWAN","SWARM","SWING","SWISS","SWITCH","SWORD","SYNTH","SYRUP","SYSTEM","TABLE","TABLET","TAG","TAIL","TALON","TAN","TANGO","TANK","TAP","TAPE","TAR","TARMAC","TART","TATTOO","TAX","TAXI","TEACHER","TEAM","TELESCOPE","TELEVISION","TEMPLE","TENNIS","TENT","TEQUILA","TEXT","THEATRE","THEORY","THERMOMETER","THERMOS","THIEF","THOR","THORN","THREAD","THRONE","THUMB","THUNDER","TICK","TICKET","TIE","TIGER","TIMBER","TIME","TIN","TISSUE","TITANIC","TOAD","TOADSTOOL","TOAST","TOASTER","TOBACCO","TOILET","TOKYO","TOMATO","TONGUE","TOOTH","TORCH","TORNADO","TOWER","TOWN","TOY","TRACK","TRAIN","TRANSMITTER","TREASURE","TREE","TRIANGLE","TRIBE","TRIGGER","TRIP","TROUSERS","TRUFFLE","TRUMPET","TRUNK","TUB","TUBE","TUMBLER","TUNA","TURKEY","TURNIP","TURTLE","TUSK","TYRANT","TYRE","UMBRELLA","UNCLE","UNDERTAKER","UNICORN","UNION","URANUS","VACUUM","VALHALLA","VALUE","VAMPIRE","VAN","VASE","VATICAN","VEIN","VENUS","VESSEL","VEST","VET","VIGILANTE","VIKING","VILLA","VILLAGE","VILLAIN","VINLAND","VIOLET","VODKA","VOLCANO","VOTE","WAITER","WAKE","WALES","WALL","WAR","WASHER","WASHINGTON","WASTE","WATCH","WATER","WATERLILY","WAVE","WAX","WEB","WEED","WELL","WEREWOLF","WEST","WHALE","WHEAT","WHEEL","WHIP","WHISKY","WIG","WILDERNESS","WIND","WINDOW","WING","WIPE","WIRE","WITCH","WIZARD","WOLF","WOMAN","WOOD","WOOL","WORLD","WORM","XYLOPHONE","YARD","YEAR","YELLOW","YETI","ZEBRA","ZEUS","ZOMBIE","ZOO"}
+offlineUnusedWords = {}
