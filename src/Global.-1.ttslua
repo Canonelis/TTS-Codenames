@@ -429,7 +429,7 @@ end
 function onLoad(saveState)
 
   -- Codenames script version
-  version = "3.2.3a"
+  version = "3.2.3b"
 
   ----------[ Script object initialization ]----------
   -- Control panels and table objects
@@ -1938,10 +1938,10 @@ function coverCard(cardIndex, agentGUID)
 
       -- Ensure the tile is on the code
       cardObject.setRotationSmooth({0, 180, 0}, false, true)
-      agentObject.setRotationSmooth({0, 180, 180}, false, true)
+      agentObject.setRotationSmooth({0, 180, 180}, false, false)
 
       cardObject.setPositionSmooth(position, false, true)
-      agentObject.setPositionSmooth(position, false, true)
+      agentObject.setPositionSmooth(position, false, false)
 
       break
     end
