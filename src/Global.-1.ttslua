@@ -1,5 +1,5 @@
 --[[
-  TTS-Codenames: A LUA script for Codenames on Tabletop Simulator for Steam.
+  Codewords: A LUA script for Codenames on Tabletop Simulator for Steam.
   Copyright (C) 2021  Ryan6578 (https://ryan6578.com)
 
   This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@ acknowledge and accept this in accordance
 with the privacy policy outlined below.
 
 More info:
-[8bb5ff]https://tts-codenames.com/privacy[-]
+[8bb5ff]https://codewords.gg/privacy[-]
 
 ]]
 
@@ -233,7 +233,7 @@ deck =
 ----------[ Game analytics ]----------
 analytics =
 {
-  url       = "https://api.tts-codenames.com",
+  url       = "https://api.codewords.gg",
   gameID    = nil,
   host      = nil,
   clueID    = nil,
@@ -429,7 +429,7 @@ end
 function onLoad(saveState)
 
   -- Codenames script version
-  version = "3.2.3b"
+  version = "3.2.3c"
 
   ----------[ Script object initialization ]----------
   -- Control panels and table objects
